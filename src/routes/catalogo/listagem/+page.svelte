@@ -4,7 +4,9 @@
     import ThemeToggle from "$lib/components/ThemeToggle.svelte";
     import Modal from "$lib/components/Modal.svelte";
     import ImageUpload from "$lib/components/ImageUpload.svelte";
+    import AlertModal from "$lib/components/AlertModal.svelte";
     import { uploadImageToSupabase, deleteImageFromSupabase } from "$lib/utils/imageUpload";
+    import { validateEditServiceForm } from "$lib/utils/validation";
 
     interface Service {
         ID: string;
@@ -50,6 +52,31 @@
 
     // Erros de validação
     let editErrors: Record<string, string> = {};
+
+    // Estado do AlertModal
+    let alertState = {
+        show: false,
+        title: "",
+        message: "",
+        type: "info" as "success" | "error" | "warning" | "info",
+        showCancel: false,
+        confirmText: "OK",
+        onConfirm: () => {},
+    };
+
+    function showAlert(
+        title: string, 
+        message: string, 
+        type: "success" | "error" | "warning" | "info" = "info",
+        showCancel = false,
+        onConfirm: () => void = () => { alertState.show = false; }
+    ) {
+        alertState = { show: true, title, message, type, showCancel, confirmText: showCancel ? "Confirmar" : "OK", onConfirm };
+    }
+
+    function closeAlert() {
+        alertState.show = false;
+    }
 
     async function fetchServices() {
         loading = true;
@@ -123,47 +150,20 @@
         imagePreview = null;
     }
 
-    function validateEditForm(): boolean {
-        editErrors = {};
 
-        // Nome: min 3, max 100
-        if (!editNome || editNome.length < 3) {
-            editErrors.nome = "O nome deve ter pelo menos 3 caracteres.";
-        } else if (editNome.length > 100) {
-            editErrors.nome = "O nome deve ter no máximo 100 caracteres.";
-        }
-
-        // Categoria: min 3, max 50
-        if (!editCategoria || editCategoria.length < 3) {
-            editErrors.categoria = "A categoria deve ter pelo menos 3 caracteres.";
-        } else if (editCategoria.length > 50) {
-            editErrors.categoria = "A categoria deve ter no máximo 50 caracteres.";
-        }
-
-        // Duração: > 1
-        if (editDuracao <= 1) {
-            editErrors.duracao = "A duração deve ser maior que 1 minuto.";
-        }
-
-        // Preço: >= 0
-        // Converte "120,00" -> 120.00
-        const priceFloat = parseFloat(editPreco.replace(",", "."));
-        if (isNaN(priceFloat) || priceFloat < 0) {
-            editErrors.preco = "O preço deve ser um valor válido e não negativo.";
-        }
-
-        // Imagem obrigatória (se limpou e não selecionou outra)
-        if (!imagePreview && !selectedImage) {
-            editErrors.imagem = "A imagem é obrigatória.";
-        }
-
-        return Object.keys(editErrors).length === 0;
-    }
 
     async function handleUpdate() {
         if (!editingService) return;
         
-        if (!validateEditForm()) {
+        // Validação usando utilitário extraído
+        editErrors = validateEditServiceForm({
+            nome: editNome,
+            categoria: editCategoria,
+            duracao: editDuracao,
+            preco: editPreco
+        }, !!(imagePreview || selectedImage));
+
+        if (Object.keys(editErrors).length > 0) {
             return;
         }
 
@@ -188,13 +188,13 @@
                      }
                      imageUrl = newImageUrl;
                 } else {
-                    alert("Erro ao fazer upload da imagem.");
+                    showAlert("Erro", "Erro ao fazer upload da imagem.", "error");
                     isUpdating = false;
                     return;
                 }
             } else if (!imagePreview) {
                  // Caso o usuário tenha limpado a imagem e não selecionado outra (já validado, mas segurança extra)
-                 alert("A imagem é obrigatória.");
+                 showAlert("Erro", "A imagem é obrigatória.", "error");
                  isUpdating = false;
                  return;
             }
@@ -235,14 +235,59 @@
             } else {
                 // Se falhar e tiver subido imagem nova, talvez devessemos deletar?
                 // Por simplicidade, deixamos lá ou o user tenta de novo.
-                alert("Erro ao atualizar serviço: " + response.statusText);
+                showAlert("Erro", "Erro ao atualizar serviço: " + response.statusText, "error");
             }
         } catch (error) {
             console.error(error);
-            alert("Erro de conexão ao atualizar.");
+            showAlert("Erro", "Erro de conexão ao atualizar.", "error");
         } finally {
             isUpdating = false;
         }
+    }
+
+    async function handleDelete(service: Service) {
+        showAlert(
+            "Excluir Serviço",
+            `Tem certeza que deseja excluir o serviço "${service.Nome}"?`,
+            "warning",
+            true, // showCancel
+            async () => {
+                // Lógica de exclusão executada ao confirmar
+                try {
+                    // 1. Deletar imagem do Supabase se existir
+                    if (service.ImagemUrl) {
+                        const deleted = await deleteImageFromSupabase(service.ImagemUrl);
+                        if (!deleted) {
+                            console.warn("Aviso: Não foi possível deletar a imagem do storage.");
+                        }
+                    }
+
+                    // 2. Deletar registro do banco via API
+                    const response = await fetch(`/api/v1/catalogos/${service.ID}`, {
+                        method: "DELETE",
+                    });
+
+                    if (response.ok) {
+                        // 3. Atualizar UI
+                        services = services.filter((s) => s.ID !== service.ID);
+                        totalItems--;
+                        if (services.length === 0 && page > 1) {
+                            page--;
+                            fetchServices();
+                        }
+                        alertState.show = false; // Fecha o modal de confirmação
+                        // Opcional: mostrar sucesso
+                        // showAlert("Sucesso", "Serviço excluído com sucesso!", "success");
+                    } else {
+                        const text = await response.text();
+                        showAlert("Erro", `Erro ao excluir serviço: ${text}`, "error");
+                    }
+                } catch (err) {
+                    console.error("Erro ao excluir:", err);
+                    showAlert("Erro", "Erro de conexão ao tentar excluir.", "error");
+                }
+            }
+        );
     }
 
     onMount(fetchServices);
@@ -377,11 +422,18 @@
                                                     "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?auto=format&fit=crop&q=80&w=600";
                                             }}
                                         />
-                                        <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+                                        <div
+                                            class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"
+                                        ></div>
                                     </div>
                                 {:else}
-                                    <div class="h-48 bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400">
-                                        <span class="material-symbols-outlined text-6xl opacity-20">image</span>
+                                    <div
+                                        class="h-48 bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400"
+                                    >
+                                        <span
+                                            class="material-symbols-outlined text-6xl opacity-20"
+                                            >image</span
+                                        >
                                     </div>
                                 {/if}
 
@@ -424,7 +476,9 @@
                                     </div>
 
                                     <div class="mt-2">
-                                        <div class="flex items-start justify-between gap-3">
+                                        <div
+                                            class="flex items-start justify-between gap-3"
+                                        >
                                             <a
                                                 href="/catalogo/listagem/{service.ID}"
                                                 class="block group/link flex-1"
@@ -435,8 +489,12 @@
                                                     {service.Nome}
                                                 </h3>
                                             </a>
-                                            <p class="text-xl font-bold text-brand-orange whitespace-nowrap">
-                                                R$ {(service.Preco / 100).toFixed(2).replace('.', ',')}
+                                            <p
+                                                class="text-xl font-bold text-brand-orange whitespace-nowrap"
+                                            >
+                                                R$ {(service.Preco / 100)
+                                                    .toFixed(2)
+                                                    .replace(".", ",")}
                                             </p>
                                         </div>
                                         <p
@@ -452,13 +510,17 @@
                                     >
                                         <span
                                             class="text-[11px] font-mono text-gray-400 dark:text-gray-500 font-medium"
-                                            >ID: #{service.ID?.substring(0, 8) || 'N/A'}</span
+                                            >ID: #{service.ID?.substring(
+                                                0,
+                                                8,
+                                            ) || "N/A"}</span
                                         >
                                         <div class="flex items-center gap-1">
                                             <button
                                                 class="p-2 text-gray-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors rounded-lg hover:bg-brand-orange/5"
                                                 title="Editar"
-                                                on:click={() => openEditModal(service)}
+                                                on:click={() =>
+                                                    openEditModal(service)}
                                             >
                                                 <span
                                                     class="material-symbols-outlined text-[20px]"
@@ -468,6 +530,8 @@
                                             <button
                                                 class="p-2 text-gray-400 hover:text-red-500 dark:hover:text-red-500 transition-colors rounded-lg hover:bg-red-500/5"
                                                 title="Excluir"
+                                                on:click={() =>
+                                                    handleDelete(service)}
                                             >
                                                 <span
                                                     class="material-symbols-outlined text-[20px]"
@@ -483,7 +547,9 @@
 
                     <!-- Pagination -->
                     {#if totalPages > 1}
-                        <div class="mt-8 flex justify-center items-center space-x-4">
+                        <div
+                            class="mt-8 flex justify-center items-center space-x-4"
+                        >
                             <button
                                 class="px-4 py-2 bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 on:click={prevPage}
@@ -515,7 +581,9 @@
                 <div slot="body" class="space-y-4">
                     <div>
                         <div class="mb-4">
-                            <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <span
+                                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                            >
                                 Imagem do Serviço
                             </span>
                             <ImageUpload
@@ -524,7 +592,9 @@
                                 on:clear={handleImageClear}
                             />
                             {#if editErrors.imagem}
-                                <p class="mt-1 text-xs text-red-500">{editErrors.imagem}</p>
+                                <p class="mt-1 text-xs text-red-500">
+                                    {editErrors.imagem}
+                                </p>
                             {/if}
                         </div>
 
@@ -538,10 +608,14 @@
                             id="edit-nome"
                             type="text"
                             bind:value={editNome}
-                            class="block w-full px-3 py-2 border {editErrors.nome ? 'border-red-500' : 'border-border-light dark:border-border-dark'} rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-brand-orange focus:border-brand-orange sm:text-sm"
+                            class="block w-full px-3 py-2 border {editErrors.nome
+                                ? 'border-red-500'
+                                : 'border-border-light dark:border-border-dark'} rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-brand-orange focus:border-brand-orange sm:text-sm"
                         />
                         {#if editErrors.nome}
-                            <p class="mt-1 text-xs text-red-500">{editErrors.nome}</p>
+                            <p class="mt-1 text-xs text-red-500">
+                                {editErrors.nome}
+                            </p>
                         {/if}
                     </div>
 
@@ -555,16 +629,22 @@
                         <select
                             id="edit-categoria"
                             bind:value={editCategoria}
-                            class="block w-full px-3 py-2 border {editErrors.categoria ? 'border-red-500' : 'border-border-light dark:border-border-dark'} rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-brand-orange focus:border-brand-orange sm:text-sm"
+                            class="block w-full px-3 py-2 border {editErrors.categoria
+                                ? 'border-red-500'
+                                : 'border-border-light dark:border-border-dark'} rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-brand-orange focus:border-brand-orange sm:text-sm"
                         >
                             <option value="Cabelo">Cabelo</option>
                             <option value="Unhas">Unhas</option>
-                            <option value="Estética Facial">Estética Facial</option>
+                            <option value="Estética Facial"
+                                >Estética Facial</option
+                            >
                             <option value="Massagem">Massagem</option>
                             <option value="Outros">Outros</option>
                         </select>
                         {#if editErrors.categoria}
-                            <p class="mt-1 text-xs text-red-500">{editErrors.categoria}</p>
+                            <p class="mt-1 text-xs text-red-500">
+                                {editErrors.categoria}
+                            </p>
                         {/if}
                     </div>
 
@@ -581,10 +661,14 @@
                                 type="text"
                                 bind:value={editPreco}
                                 placeholder="0,00"
-                                class="block w-full px-3 py-2 border {editErrors.preco ? 'border-red-500' : 'border-border-light dark:border-border-dark'} rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-brand-orange focus:border-brand-orange sm:text-sm"
+                                class="block w-full px-3 py-2 border {editErrors.preco
+                                    ? 'border-red-500'
+                                    : 'border-border-light dark:border-border-dark'} rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-brand-orange focus:border-brand-orange sm:text-sm"
                             />
                             {#if editErrors.preco}
-                                <p class="mt-1 text-xs text-red-500">{editErrors.preco}</p>
+                                <p class="mt-1 text-xs text-red-500">
+                                    {editErrors.preco}
+                                </p>
                             {/if}
                         </div>
 
@@ -599,10 +683,14 @@
                                 id="edit-duracao"
                                 type="number"
                                 bind:value={editDuracao}
-                                class="block w-full px-3 py-2 border {editErrors.duracao ? 'border-red-500' : 'border-border-light dark:border-border-dark'} rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-brand-orange focus:border-brand-orange sm:text-sm"
+                                class="block w-full px-3 py-2 border {editErrors.duracao
+                                    ? 'border-red-500'
+                                    : 'border-border-light dark:border-border-dark'} rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-brand-orange focus:border-brand-orange sm:text-sm"
                             />
                             {#if editErrors.duracao}
-                                <p class="mt-1 text-xs text-red-500">{editErrors.duracao}</p>
+                                <p class="mt-1 text-xs text-red-500">
+                                    {editErrors.duracao}
+                                </p>
                             {/if}
                         </div>
                     </div>
@@ -624,6 +712,18 @@
                     </button>
                 </div>
             </Modal>
+
+            <!-- Alert Modal -->
+            <AlertModal
+                show={alertState.show}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
+                showCancel={alertState.showCancel}
+                confirmText={alertState.confirmText}
+                on:confirm={alertState.onConfirm}
+                on:cancel={closeAlert}
+            />
 
             <footer
                 class="mt-12 text-center text-sm text-gray-500 dark:text-gray-400 pb-6"

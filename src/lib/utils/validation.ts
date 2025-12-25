@@ -11,7 +11,14 @@ export interface ServiceFormData {
   categoria: string;
   duracao_padrao: number;
   preco: string;
-  description: string;
+  description?: string; // Tornar opcional se não for usado em todo lugar
+}
+
+export interface EditServiceFormData {
+  nome: string;
+  categoria: string;
+  duracao: number;
+  preco: string;
 }
 
 /**
@@ -90,4 +97,49 @@ export function validateCategoryName(
   }
 
   return { valid: true };
+}
+
+/**
+ * Valida o formulário de edição de serviço
+ * @param data - Dados do serviço
+ * @param hasImage - Se existe imagem definida (nova ou pré-existente)
+ * @returns Erros de validação
+ */
+export function validateEditServiceForm(
+  data: EditServiceFormData,
+  hasImage: boolean
+): ValidationErrors {
+  const errors: ValidationErrors = {};
+
+  // Nome: min 3, max 100
+  if (!data.nome || data.nome.length < 3) {
+    errors.nome = "O nome deve ter pelo menos 3 caracteres.";
+  } else if (data.nome.length > 100) {
+    errors.nome = "O nome deve ter no máximo 100 caracteres.";
+  }
+
+  // Categoria: min 3, max 50
+  if (!data.categoria || data.categoria.length < 3) {
+    errors.categoria = "A categoria deve ter pelo menos 3 caracteres.";
+  } else if (data.categoria.length > 50) {
+    errors.categoria = "A categoria deve ter no máximo 50 caracteres.";
+  }
+
+  // Duração: > 1
+  if (data.duracao <= 1) {
+    errors.duracao = "A duração deve ser maior que 1 minuto.";
+  }
+
+  // Preço: >= 0 e válido
+  const priceFloat = parseFloat(data.preco.replace(",", "."));
+  if (isNaN(priceFloat) || priceFloat < 0) {
+    errors.preco = "O preço deve ser um valor válido e não negativo.";
+  }
+
+  // Imagem obrigatória
+  if (!hasImage) {
+    errors.imagem = "A imagem é obrigatória.";
+  }
+
+  return errors;
 }

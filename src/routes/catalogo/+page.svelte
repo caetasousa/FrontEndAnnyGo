@@ -28,7 +28,6 @@
     "Depilação",
     "Maquiagem",
     "Massagem",
-    "Redes",
   ];
 
   /** Categoria selecionada */
