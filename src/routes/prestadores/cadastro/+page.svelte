@@ -165,7 +165,7 @@
             catalogo_ids: selectedCatalogIds,
             cpf: cpfDigits,
             email: email.trim(),
-            foto_url: imageUrl,
+            image_url: imageUrl,
             nome: nome.trim(),
             telefone: phoneDigits
         };
