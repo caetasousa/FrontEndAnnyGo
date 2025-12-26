@@ -1,99 +1,160 @@
 <script lang="ts">
-    import { onMount } from "svelte";
-    import ThemeToggle from "./ThemeToggle.svelte";
+  import { onMount } from "svelte";
+  import { Menu, X, Search, Sun, Moon } from 'lucide-svelte';
+  import { theme } from '$lib/stores/theme';
 
-    let isMobileMenuOpen = false;
+  let isMobileMenuOpen = false;
+  let scrolled = false;
 
-    function toggleMobileMenu() {
-        isMobileMenuOpen = !isMobileMenuOpen;
-    }
+  function toggleMobileMenu() {
+    isMobileMenuOpen = !isMobileMenuOpen;
+  }
+
+  function toggleTheme() {
+    theme.update(t => t === 'dark' ? 'light' : 'dark');
+  }
+
+  onMount(() => {
+    const handleScroll = () => {
+      scrolled = window.scrollY > 20;
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  });
 </script>
 
 <nav
-    class="sticky top-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur shadow-sm border-b border-gray-200 dark:border-gray-800"
+  class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 {scrolled ? 'bg-white/80 dark:bg-black/80 backdrop-blur-md py-4' : 'py-6'}"
 >
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-20">
-            <!-- Logo -->
-            <div class="flex items-center space-x-3">
-                <div class="text-primary">
-                    <span class="material-icons text-3xl">spa</span>
-                </div>
-<span class="font-bold text-xl tracking-tight">BellaVita</span>
-            </div>
-
-            <!-- Desktop Menu -->
-            <div class="hidden md:flex space-x-8 items-center">
-                <a
-                    class="text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary font-medium transition"
-                    href="/">Início</a
-                >
-                <a
-                    class="text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary font-medium transition"
-                    href="/#services">Serviços</a
-                >
-                <a
-                    class="text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary font-medium transition"
-                    href="/#specialists">Especialistas</a
-                >
-                <a
-                    class="text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary font-medium transition"
-                    href="/#testimonials">Depoimentos</a
-                >
-            </div>
-
-            <!-- Actions -->
-            <div class="flex items-center space-x-4">
-                <ThemeToggle />
-                <a
-                    class="hidden md:inline-flex items-center justify-center px-6 py-2.5 border border-transparent text-sm font-semibold rounded-full shadow-sm text-white bg-primary hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all transform hover:scale-105"
-                    href="/login"
-                >
-                    Agendar Agora
-                </a>
-
-                <!-- Mobile Menu Button -->
-                <button
-                    on:click={toggleMobileMenu}
-                    class="md:hidden text-gray-500 hover:text-primary p-2"
-                >
-                    <span class="material-icons"
-                        >{isMobileMenuOpen ? "close" : "menu"}</span
-                    >
-                </button>
-            </div>
+  <div class="container mx-auto px-4">
+    <div class="flex items-center justify-between gap-8">
+      <!-- Logo -->
+      <a href="#home" class="flex items-center gap-2 group">
+        <div class="w-9 h-9 bg-orange-500 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-lg shadow-orange-500/25 transition-transform duration-300 group-hover:scale-105">
+          B
         </div>
-    </div>
+        <span class="text-base font-bold text-gray-900 dark:text-white font-sans-bs">
+          Bella<span class="text-orange-500">Salon</span>
+        </span>
+      </a>
 
-    <!-- Mobile Menu -->
-    {#if isMobileMenuOpen}
-        <div
-            class="md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800"
+      <!-- Desktop Nav Links - Contained -->
+      <div class="hidden md:flex items-center gap-1 bg-gray-100/50 dark:bg-white/5 backdrop-blur-sm px-5 py-2 rounded-full border border-gray-200/50 dark:border-white/5">
+        <a
+          href="#home"
+          class="relative px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-300 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-orange-500 after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-300"
         >
-            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-                <a
-                    class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
-                    href="/">Início</a
-                >
-                <a
-                    class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
-                    href="/#services">Serviços</a
-                >
-                <a
-                    class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
-                    href="/#specialists">Especialistas</a
-                >
-                <a
-                    class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
-                    href="/#testimonials">Depoimentos</a
-                >
-                <a
-                    class="block w-full text-center mt-4 px-6 py-3 border border-transparent text-base font-semibold rounded-full shadow-sm text-white bg-primary hover:bg-orange-600"
-                    href="/#book"
-                >
-                    Agendar Agora
-                </a>
-            </div>
-        </div>
-    {/if}
+          Início
+        </a>
+        <a
+          href="#services"
+          class="relative px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-300 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-orange-500 after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-300"
+        >
+          Serviços
+        </a>
+        <a
+          href="#specialists"
+          class="relative px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-300 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-orange-500 after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-300"
+        >
+          Especialistas
+        </a>
+        <a
+          href="#testimonials"
+          class="relative px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-300 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-orange-500 after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-300"
+        >
+          Depoimentos
+        </a>
+      </div>
+
+      <!-- Desktop Actions -->
+      <div class="hidden md:flex items-center gap-3">
+        <button
+          on:click={toggleTheme}
+          class="w-9 h-9 rounded-full bg-gray-100/50 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-white/10 transition-all duration-300 flex items-center justify-center"
+          aria-label="Toggle theme"
+        >
+          {#if $theme === 'dark'}
+            <Sun class="w-4 h-4" />
+          {:else}
+            <Moon class="w-4 h-4" />
+          {/if}
+        </button>
+        <button
+          class="w-9 h-9 rounded-full bg-gray-100/50 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-white/10 transition-all duration-300 flex items-center justify-center"
+          aria-label="Search"
+        >
+          <Search class="w-4 h-4" />
+        </button>
+        <button class="px-5 py-2 rounded-full bg-orange-500 text-white text-sm font-semibold shadow-md hover:scale-105 hover:bg-orange-600 transition-all duration-300 hover:shadow-lg">
+          Agendar Agora
+        </button>
+      </div>
+
+      <!-- Mobile Actions -->
+      <div class="flex md:hidden items-center gap-2">
+        <button
+          on:click={toggleTheme}
+          class="w-9 h-9 rounded-full border border-gray-300 dark:border-white/10 bg-white dark:bg-transparent text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all duration-300 flex items-center justify-center"
+          aria-label="Toggle theme"
+        >
+          {#if $theme === 'dark'}
+            <Sun class="w-4 h-4" />
+          {:else}
+            <Moon class="w-4 h-4" />
+          {/if}
+        </button>
+        <button
+          on:click={toggleMobileMenu}
+          class="w-9 h-9 rounded-full bg-transparent text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all duration-300 flex items-center justify-center"
+          aria-label="Toggle menu"
+        >
+          {#if isMobileMenuOpen}
+            <X class="w-4 h-4" />
+          {:else}
+            <Menu class="w-4 h-4" />
+          {/if}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Menu -->
+  {#if isMobileMenuOpen}
+    <div
+      class="md:hidden bg-white/95 dark:bg-black/95 backdrop-blur-3xl border-b border-gray-200 dark:border-white/10 p-4 flex flex-col gap-4 animate-slide-down"
+    >
+      <a
+        href="#home"
+        on:click={() => isMobileMenuOpen = false}
+        class="text-base font-medium text-gray-700 dark:text-gray-300 hover:text-orange-500 py-2 border-b border-gray-200 dark:border-white/5 transition-colors duration-300"
+      >
+        Início
+      </a>
+      <a
+        href="#services"
+        on:click={() => isMobileMenuOpen = false}
+        class="text-base font-medium text-gray-700 dark:text-gray-300 hover:text-orange-500 py-2 border-b border-gray-200 dark:border-white/5 transition-colors duration-300"
+      >
+        Serviços
+      </a>
+      <a
+        href="#specialists"
+        on:click={() => isMobileMenuOpen = false}
+        class="text-base font-medium text-gray-700 dark:text-gray-300 hover:text-orange-500 py-2 border-b border-gray-200 dark:border-white/5 transition-colors duration-300"
+      >
+        Especialistas
+      </a>
+      <a
+        href="#testimonials"
+        on:click={() => isMobileMenuOpen = false}
+        class="text-base font-medium text-gray-700 dark:text-gray-300 hover:text-orange-500 py-2 border-b border-gray-200 dark:border-white/5 transition-colors duration-300"
+      >
+        Depoimentos
+      </a>
+      <button class="w-full mt-4 px-6 py-2.5 rounded-full bg-orange-500 text-white text-sm font-semibold shadow-md">
+        Agendar Agora
+      </button>
+    </div>
+  {/if}
 </nav>

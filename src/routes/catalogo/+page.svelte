@@ -25,9 +25,11 @@
     "Cabelo",
     "Unhas",
     "Estética Facial",
+    "Estética Corporal",
     "Depilação",
     "Maquiagem",
     "Massagem",
+    "Tratamentos",
   ];
 
   /** Categoria selecionada */
@@ -262,7 +264,7 @@
           </span>
           <input
             class="block w-full pl-10 pr-3 py-2 border border-border-light dark:border-border-dark rounded-md leading-5 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-colors"
-            placeholder="Pesquisar serviços ou profissionais..."
+            placeholder="Pesquisar no catálogo de serviços..."
             type="text"
           />
         </div>
@@ -291,11 +293,11 @@
             >
           </nav>
           <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-            Registrar Novo Serviço
+            Cadastro de Serviços
           </h1>
           <p class="text-gray-500 dark:text-gray-400 mt-1">
-            Preencha as informações abaixo para adicionar um novo serviço ao
-            catálogo.
+            Adicione novos serviços ao catálogo do salão. Organize por
+            categorias para facilitar a busca.
           </p>
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -318,7 +320,7 @@
                       : 'border-border-light dark:border-border-dark'} bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3 transition-colors"
                     id="service-name"
                     name="service-name"
-                    placeholder="Ex: Corte de Cabelo Feminino"
+                    placeholder="Ex: Corte Feminino, Manicure Completa, Hidratação Profunda"
                     type="text"
                     bind:value={nome}
                     minlength="3"
@@ -448,7 +450,7 @@
                     class="block w-full rounded-md border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3 transition-colors"
                     id="description"
                     name="description"
-                    placeholder="Descreva os detalhes do procedimento..."
+                    placeholder="Descreva os detalhes do serviço, técnicas utilizadas, benefícios, produtos aplicados..."
                     rows="4"
                     bind:value={description}
                   ></textarea>
@@ -514,11 +516,11 @@
                 >
                 <div>
                   <h4 class="text-sm font-medium text-brand-orange">
-                    Dica Importante
+                    Dica Profissional
                   </h4>
                   <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    Serviços com descrições detalhadas e fotos de alta qualidade
-                    têm 30% mais chances de serem agendados.
+                    Serviços com descrições completas e imagens profissionais
+                    atraem mais clientes e facilitam o agendamento.
                   </p>
                 </div>
               </div>

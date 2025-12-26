@@ -12,7 +12,7 @@
         { label: "Início", href: "/", icon: "home" },
         {
             label: "Agenda do Prestador",
-            href: "/agenda",
+            href: "/prestadores/agenda",
             icon: "calendar_month",
         },
         {

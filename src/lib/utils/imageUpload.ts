@@ -4,9 +4,9 @@
 
 /** Configuração do Supabase */
 export const SUPABASE_CONFIG = {
-  url: "https://tdfuderuzpylkctxbysu.supabase.co",
-  key: "sb_secret_s2VCGMvJ19RQDbchwE8LEQ_SMEBR3IC",
-  bucket: "imagens",
+  url: import.meta.env.VITE_SUPABASE_URL,
+  key: import.meta.env.VITE_SUPABASE_KEY,
+  bucket: import.meta.env.VITE_SUPABASE_BUCKET_CATALOGOS,
 } as const;
 
 /**
@@ -48,12 +48,14 @@ export function validateImageFile(file: File): { valid: boolean; error?: string 
   return { valid: true };
 }
 
+
 /**
- * Faz upload de imagem para o Supabase Storage
+ * Faz upload de imagem para o Supabase Storage (função genérica)
  * @param file - Arquivo de imagem a ser enviado
+ * @param bucketPath - Caminho do bucket (ex: "imagens/catalogos")
  * @returns Promise com a URL pública da imagem ou null em caso de erro
  */
-export async function uploadImageToSupabase(file: File): Promise<string | null> {
+async function uploadImageToSupabaseGeneric(file: File, bucketPath: string): Promise<string | null> {
   try {
     // Gera hash único para o nome do arquivo
     const hash = await generateFileHash(file);
@@ -63,9 +65,17 @@ export async function uploadImageToSupabase(file: File): Promise<string | null> 
     console.log('Uploading image:', hashedFilename);
     console.log('File type:', file.type);
     console.log('File size:', file.size);
+    console.log('Bucket path:', bucketPath);
+
+    // Extrai o bucket raiz e o caminho (se houver subpasta)
+    // Ex: "imagens/catalogos" -> bucket = "imagens", path = "catalogos"
+    const bucketParts = bucketPath.split('/');
+    const bucketName = bucketParts[0];
+    const subPath = bucketParts.slice(1).join('/');
+    const fullPath = subPath ? `${subPath}/${hashedFilename}` : hashedFilename;
 
     // Monta a URL de upload do Supabase Storage
-    const uploadUrl = `${SUPABASE_CONFIG.url}/storage/v1/object/${SUPABASE_CONFIG.bucket}/${hashedFilename}`;
+    const uploadUrl = `${SUPABASE_CONFIG.url}/storage/v1/object/${bucketName}/${fullPath}`;
 
     console.log('Upload URL:', uploadUrl);
 
@@ -101,7 +111,7 @@ export async function uploadImageToSupabase(file: File): Promise<string | null> 
     console.log('Upload success response:', responseData);
 
     // Constrói a URL pública para acessar a imagem
-    const publicUrl = `${SUPABASE_CONFIG.url}/storage/v1/object/public/${SUPABASE_CONFIG.bucket}/${hashedFilename}`;
+    const publicUrl = `${SUPABASE_CONFIG.url}/storage/v1/object/public/${bucketName}/${fullPath}`;
 
     console.log('Public URL:', publicUrl);
 
@@ -111,6 +121,26 @@ export async function uploadImageToSupabase(file: File): Promise<string | null> 
     throw error;
   }
 }
+
+/**
+ * Faz upload de imagem de catálogo para o Supabase Storage
+ * @param file - Arquivo de imagem a ser enviado
+ * @returns Promise com a URL pública da imagem ou null em caso de erro
+ */
+export async function uploadImageToSupabase(file: File): Promise<string | null> {
+  return uploadImageToSupabaseGeneric(file, SUPABASE_CONFIG.bucket);
+}
+
+/**
+ * Faz upload de imagem de prestador para o Supabase Storage
+ * @param file - Arquivo de imagem a ser enviado
+ * @returns Promise com a URL pública da imagem ou null em caso de erro
+ */
+export async function uploadPrestadorImageToSupabase(file: File): Promise<string | null> {
+  const prestadorBucket = import.meta.env.VITE_SUPABASE_BUCKET_PRESTADORES;
+  return uploadImageToSupabaseGeneric(file, prestadorBucket);
+}
+
 
 /**
  * Cria um preview (base64) de uma imagem
@@ -140,17 +170,29 @@ export function createImagePreview(file: File): Promise<string> {
  */
 export async function deleteImageFromSupabase(publicUrl: string): Promise<boolean> {
   try {
-    // Extrai o nome do arquivo da URL
-    const fileName = publicUrl.split('/').pop();
-
-    if (!fileName) {
+    // Extrai o caminho completo do arquivo da URL pública
+    // Ex: https://.../public/imagens/catalogos/abc.png -> imagens/catalogos/abc.png
+    const urlParts = publicUrl.split('/storage/v1/object/public/');
+    if (urlParts.length < 2) {
       console.error('Invalid image URL for deletion');
       return false;
     }
 
-    console.log('Deleting image from Supabase:', fileName);
+    const fullPath = urlParts[1]; // Ex: "imagens/catalogos/abc.png"
+    
+    if (!fullPath) {
+      console.error('Invalid image URL for deletion');
+      return false;
+    }
 
-    const deleteUrl = `${SUPABASE_CONFIG.url}/storage/v1/object/${SUPABASE_CONFIG.bucket}/${fileName}`;
+    console.log('Deleting image from Supabase:', fullPath);
+
+    // Extrai apenas o bucket raiz para a URL de delete
+    const pathParts = fullPath.split('/');
+    const bucketName = pathParts[0];
+    const filePath = pathParts.slice(1).join('/');
+
+    const deleteUrl = `${SUPABASE_CONFIG.url}/storage/v1/object/${bucketName}/${filePath}`;
 
     const response = await fetch(deleteUrl, {
       method: 'DELETE',

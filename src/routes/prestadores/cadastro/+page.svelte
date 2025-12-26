@@ -1,6 +1,231 @@
 <script lang="ts">
+    import { onMount } from "svelte";
     import Sidebar from "$lib/components/Sidebar.svelte";
     import ThemeToggle from "$lib/components/ThemeToggle.svelte";
+    import AlertModal from "$lib/components/AlertModal.svelte";
+    import ImageUpload from "$lib/components/ImageUpload.svelte";
+    import { uploadPrestadorImageToSupabase } from "$lib/utils/imageUpload";
+
+    // Interface do Serviço (Catálogo)
+    interface CatalogService {
+        ID: string;
+        Nome: string;
+        Categoria: string;
+        DuracaoPadrao: number;
+        // Outros campos se necessário
+    }
+
+    interface CatalogResponse {
+        data: CatalogService[];
+        total: number;
+    }
+
+    // Estado do formulário
+    let nome = "";
+    let cpf = "";
+    let phone = "";
+    let email = "";
+    let selectedCatalogIds: string[] = [];
+    
+    // Estado da imagem
+    let selectedImage: File | null = null;
+    let imagePreview: string | null = null;
+
+    // Estado da lista de serviços
+    let services: CatalogService[] = [];
+    let loadingServices = true;
+    let page = 1;
+    let limit = 12;
+    let totalServices = 0;
+    
+    // Estado de envio
+    let isSubmitting = false;
+
+    // Alert Modal
+    let alertState = {
+        show: false,
+        title: "",
+        message: "",
+        type: "info" as "success" | "error" | "warning" | "info",
+        onConfirm: () => { alertState.show = false; }
+    };
+
+    function showAlert(title: string, message: string, type: "success" | "error" | "warning" | "info" = "info", onConfirm?: () => void) {
+        alertState = { show: true, title, message, type, onConfirm: onConfirm || (() => { alertState.show = false; }) };
+    }
+
+    async function fetchServices(reset = false) {
+        if (reset) {
+            page = 1;
+            services = [];
+            loadingServices = true;
+        }
+
+        try {
+            const res = await fetch(`/api/v1/catalogos?page=${page}&limit=${limit}`);
+            if (res.ok) {
+                const data: CatalogResponse = await res.json();
+                if (reset) {
+                    services = data.data || [];
+                } else {
+                    services = [...services, ...(data.data || [])];
+                }
+                totalServices = data.total;
+            } else {
+                console.error("Erro ao buscar serviços:", await res.text());
+                showAlert("Erro", "Falha ao carregar lista de serviços.", "error");
+            }
+        } catch (error) {
+            console.error(error);
+            showAlert("Erro", "Erro de conexão ao buscar serviços.", "error");
+        } finally {
+            loadingServices = false;
+        }
+    }
+
+    function loadMore() {
+        page++;
+        fetchServices();
+    }
+
+    async function handleSubmit() {
+        // Validação do Nome (min=3, max=100)
+        if (!nome || nome.trim().length < 3) {
+            showAlert("Atenção", "O nome deve ter no mínimo 3 caracteres.", "warning");
+            return;
+        }
+        if (nome.trim().length > 100) {
+            showAlert("Atenção", "O nome deve ter no máximo 100 caracteres.", "warning");
+            return;
+        }
+
+        // Validação do CPF (11 dígitos numéricos)
+        const cpfDigits = cpf.replace(/\D/g, "");
+        if (!cpfDigits || cpfDigits.length !== 11) {
+            showAlert("Atenção", "O CPF deve conter exatamente 11 dígitos.", "warning");
+            return;
+        }
+
+        // Validação do Email (formato válido)
+        if (!email || email.trim() === "") {
+            showAlert("Atenção", "O email é obrigatório.", "warning");
+            return;
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            showAlert("Atenção", "Por favor, insira um email válido.", "warning");
+            return;
+        }
+
+        // Validação do Telefone (min=8, max=15 dígitos)
+        const phoneDigits = phone.replace(/\D/g, "");
+        if (!phoneDigits || phoneDigits.length < 8) {
+            showAlert("Atenção", "O telefone deve ter no mínimo 8 dígitos.", "warning");
+            return;
+        }
+        if (phoneDigits.length > 15) {
+            showAlert("Atenção", "O telefone deve ter no máximo 15 dígitos.", "warning");
+            return;
+        }
+
+        // Validação da Foto
+        if (!selectedImage) {
+            showAlert("Atenção", "Selecione uma foto para o prestador.", "warning");
+            return;
+        }
+
+        // Validação dos Serviços (pelo menos um)
+        if (selectedCatalogIds.length === 0) {
+            showAlert("Atenção", "Selecione pelo menos um serviço para o prestador.", "warning");
+            return;
+        }
+
+        isSubmitting = true;
+
+        // 1. Upload da imagem
+        let imageUrl = "";
+        try {
+            const uploadedUrl = await uploadPrestadorImageToSupabase(selectedImage);
+            if (uploadedUrl) {
+                imageUrl = uploadedUrl;
+            } else {
+                showAlert("Erro", "Erro ao fazer upload da imagem.", "error");
+                isSubmitting = false;
+                return;
+            }
+        } catch (error) {
+            console.error(error);
+            showAlert("Erro", "Erro ao fazer upload da imagem.", "error");
+            isSubmitting = false;
+            return;
+        }
+
+        // 2. Criar payload com a URL da imagem
+        const payload = {
+            catalogo_ids: selectedCatalogIds,
+            cpf: cpfDigits,
+            email: email.trim(),
+            foto_url: imageUrl,
+            nome: nome.trim(),
+            telefone: phoneDigits
+        };
+
+        try {
+            const res = await fetch("/api/v1/prestadores", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                showAlert("Sucesso", "Prestador cadastrado com sucesso!", "success", () => {
+                   // Limpar formulário ou redirecionar
+                   resetForm();
+                });
+            } else {
+                const text = await res.text();
+                // Mensagem mais amigável para erro de CPF
+                let errorMessage = text;
+                if (text.toLowerCase().includes("cpf") || text.toLowerCase().includes("invalid")) {
+                    errorMessage = "CPF inválido. Por favor, verifique o número digitado.";
+                } else if (text.toLowerCase().includes("catalogo") || text.toLowerCase().includes("serviço")) {
+                    errorMessage = "O prestador deve ter pelo menos um serviço cadastrado.";
+                }
+                showAlert("Erro", errorMessage, "error");
+            }
+        } catch (err) {
+            console.error(err);
+            showAlert("Erro", "Erro de conexão ao salvar prestador.", "error");
+        } finally {
+            isSubmitting = false;
+        }
+    }
+
+    function resetForm() {
+        nome = "";
+        cpf = "";
+        phone = "";
+        email = "";
+        selectedCatalogIds = [];
+        selectedImage = null;
+        imagePreview = null;
+        window.scrollTo(0, 0);
+    }
+
+    async function handleImageSelect(event: CustomEvent<{ file: File; preview: string }>) {
+        const { file, preview } = event.detail;
+        selectedImage = file;
+        imagePreview = preview;
+    }
+
+    function handleImageClear() {
+        selectedImage = null;
+        imagePreview = null;
+    }
+
+    onMount(() => {
+        fetchServices(true);
+    });
 </script>
 
 <div
@@ -12,18 +237,14 @@
             class="h-16 bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark flex items-center justify-between px-6 z-10"
         >
             <div class="flex items-center flex-1 max-w-2xl">
-                <div class="relative w-full">
-                    <span
-                        class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-                    >
-                        <span class="material-symbols-outlined text-gray-400"
-                            >search</span
-                        >
+                <!-- Search bar (placeholder layout) -->
+                <div class="relative w-full opacity-50 pointer-events-none">
+                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center">
+                        <span class="material-symbols-outlined text-gray-400">search</span>
                     </span>
                     <input
-                        class="block w-full pl-10 pr-3 py-2 border border-border-light dark:border-border-dark rounded-md leading-5 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-input-focus focus:border-input-focus sm:text-sm transition-all"
-                        placeholder="Pesquisar prestadores..."
-                        type="text"
+                        class="block w-full pl-10 pr-3 py-2 border border-border-light dark:border-border-dark rounded-md bg-gray-50 dark:bg-gray-800 text-sm"
+                        placeholder="Pesquisar..." disabled
                     />
                 </div>
             </div>
@@ -36,6 +257,7 @@
                 <ThemeToggle />
             </div>
         </header>
+
         <div class="flex-1 overflow-y-auto p-6 md:p-8">
             <div class="max-w-4xl mx-auto space-y-6">
                 <div>
@@ -59,6 +281,7 @@
                         Adicione um novo profissional e atribua seus serviços.
                     </p>
                 </div>
+
                 <div
                     class="bg-surface-light dark:bg-surface-dark rounded-lg shadow-sm border border-border-light dark:border-border-dark overflow-hidden"
                 >
@@ -80,6 +303,7 @@
                                         for="name">Nome Completo</label
                                     >
                                     <input
+                                        bind:value={nome}
                                         class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
                                         id="name"
                                         placeholder="Ex: Ana Maria Costa"
@@ -92,6 +316,7 @@
                                         for="cpf">CPF</label
                                     >
                                     <input
+                                        bind:value={cpf}
                                         class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
                                         id="cpf"
                                         placeholder="000.000.000-00"
@@ -104,6 +329,7 @@
                                         for="phone">Telefone / WhatsApp</label
                                     >
                                     <input
+                                        bind:value={phone}
                                         class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
                                         id="phone"
                                         placeholder="(00) 00000-0000"
@@ -125,6 +351,7 @@
                                             >
                                         </div>
                                         <input
+                                            bind:value={email}
                                             class="block w-full pl-10 rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
                                             id="email"
                                             placeholder="prestador@bellavita.com"
@@ -132,11 +359,23 @@
                                         />
                                     </div>
                                 </div>
+                                <div class="col-span-1 md:col-span-2">
+                                    <div
+                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                                    >Foto do Prestador</div>
+                                    <ImageUpload
+                                        previewUrl={imagePreview}
+                                        on:select={handleImageSelect}
+                                        on:clear={handleImageClear}
+                                    />
+                                </div>
                             </div>
                         </div>
+
                         <div
                             class="border-t border-border-light dark:border-border-dark"
                         ></div>
+
                         <div>
                             <h3
                                 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center mb-2"
@@ -153,165 +392,89 @@
                                 Selecione todos os serviços que este
                                 profissional está qualificado para realizar.
                             </p>
+                            
+                            <!-- Services Grid -->
                             <div
                                 class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
                             >
-                                <label
-                                    class="relative flex items-start p-4 rounded-lg border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-all group"
-                                >
-                                    <div class="min-w-0 flex-1 text-sm">
-                                        <div
-                                            class="font-medium text-gray-900 dark:text-white"
-                                        >
-                                            Corte de Cabelo
-                                        </div>
-                                        <p
-                                            class="text-gray-500 dark:text-gray-400 text-xs mt-1"
-                                        >
-                                            45 min • Cabeleireiro
-                                        </p>
+                                {#if loadingServices && services.length === 0}
+                                    <div class="col-span-full py-8 text-center text-gray-500">
+                                        Carregando serviços...
                                     </div>
-                                    <div class="ml-3 flex items-center h-5">
-                                        <input
-                                            class="h-5 w-5 text-input-focus border-gray-300 rounded focus:ring-input-focus dark:bg-gray-700 dark:border-gray-600"
-                                            type="checkbox"
-                                        />
-                                    </div>
-                                </label>
-                                <label
-                                    class="relative flex items-start p-4 rounded-lg border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-all group"
-                                >
-                                    <div class="min-w-0 flex-1 text-sm">
-                                        <div
-                                            class="font-medium text-gray-900 dark:text-white"
+                                {:else}
+                                    {#each services as service}
+                                        <label
+                                            class="relative flex items-start p-4 rounded-lg border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-all group"
+                                            class:border-primary={selectedCatalogIds.includes(service.ID)}
+                                            class:bg-primary-50={selectedCatalogIds.includes(service.ID)}
                                         >
-                                            Manicure Completa
-                                        </div>
-                                        <p
-                                            class="text-gray-500 dark:text-gray-400 text-xs mt-1"
-                                        >
-                                            60 min • Unhas
-                                        </p>
-                                    </div>
-                                    <div class="ml-3 flex items-center h-5">
-                                        <input
-                                            checked
-                                            class="h-5 w-5 text-input-focus border-gray-300 rounded focus:ring-input-focus dark:bg-gray-700 dark:border-gray-600"
-                                            type="checkbox"
-                                        />
-                                    </div>
-                                </label>
-                                <label
-                                    class="relative flex items-start p-4 rounded-lg border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-all group"
-                                >
-                                    <div class="min-w-0 flex-1 text-sm">
-                                        <div
-                                            class="font-medium text-gray-900 dark:text-white"
-                                        >
-                                            Design de Sobrancelhas
-                                        </div>
-                                        <p
-                                            class="text-gray-500 dark:text-gray-400 text-xs mt-1"
-                                        >
-                                            30 min • Estética
-                                        </p>
-                                    </div>
-                                    <div class="ml-3 flex items-center h-5">
-                                        <input
-                                            class="h-5 w-5 text-input-focus border-gray-300 rounded focus:ring-input-focus dark:bg-gray-700 dark:border-gray-600"
-                                            type="checkbox"
-                                        />
-                                    </div>
-                                </label>
-                                <label
-                                    class="relative flex items-start p-4 rounded-lg border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-all group"
-                                >
-                                    <div class="min-w-0 flex-1 text-sm">
-                                        <div
-                                            class="font-medium text-gray-900 dark:text-white"
-                                        >
-                                            Extensão de Cílios
-                                        </div>
-                                        <p
-                                            class="text-gray-500 dark:text-gray-400 text-xs mt-1"
-                                        >
-                                            90 min • Estética
-                                        </p>
-                                    </div>
-                                    <div class="ml-3 flex items-center h-5">
-                                        <input
-                                            class="h-5 w-5 text-input-focus border-gray-300 rounded focus:ring-input-focus dark:bg-gray-700 dark:border-gray-600"
-                                            type="checkbox"
-                                        />
-                                    </div>
-                                </label>
-                                <label
-                                    class="relative flex items-start p-4 rounded-lg border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-all group"
-                                >
-                                    <div class="min-w-0 flex-1 text-sm">
-                                        <div
-                                            class="font-medium text-gray-900 dark:text-white"
-                                        >
-                                            Maquiagem Social
-                                        </div>
-                                        <p
-                                            class="text-gray-500 dark:text-gray-400 text-xs mt-1"
-                                        >
-                                            60 min • Maquiagem
-                                        </p>
-                                    </div>
-                                    <div class="ml-3 flex items-center h-5">
-                                        <input
-                                            checked
-                                            class="h-5 w-5 text-input-focus border-gray-300 rounded focus:ring-input-focus dark:bg-gray-700 dark:border-gray-600"
-                                            type="checkbox"
-                                        />
-                                    </div>
-                                </label>
-                                <label
-                                    class="relative flex items-start p-4 rounded-lg border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-all group"
-                                >
-                                    <div class="min-w-0 flex-1 text-sm">
-                                        <div
-                                            class="font-medium text-gray-900 dark:text-white"
-                                        >
-                                            Hidratação Facial
-                                        </div>
-                                        <p
-                                            class="text-gray-500 dark:text-gray-400 text-xs mt-1"
-                                        >
-                                            45 min • Estética
-                                        </p>
-                                    </div>
-                                    <div class="ml-3 flex items-center h-5">
-                                        <input
-                                            class="h-5 w-5 text-input-focus border-gray-300 rounded focus:ring-input-focus dark:bg-gray-700 dark:border-gray-600"
-                                            type="checkbox"
-                                        />
-                                    </div>
-                                </label>
+                                            <div class="min-w-0 flex-1 text-sm">
+                                                <div
+                                                    class="font-medium text-gray-900 dark:text-white"
+                                                >
+                                                    {service.Nome}
+                                                </div>
+                                                <p
+                                                    class="text-gray-500 dark:text-gray-400 text-xs mt-1"
+                                                >
+                                                    {service.DuracaoPadrao} min • {service.Categoria}
+                                                </p>
+                                            </div>
+                                            <div class="ml-3 flex items-center h-5">
+                                                <input
+                                                    class="h-5 w-5 text-input-focus border-gray-300 rounded focus:ring-input-focus dark:bg-gray-700 dark:border-gray-600"
+                                                    type="checkbox"
+                                                    value={service.ID}
+                                                    bind:group={selectedCatalogIds}
+                                                />
+                                            </div>
+                                        </label>
+                                    {/each}
+                                {/if}
                             </div>
+                            
+                            <!-- Load More -->
+                            {#if services.length < totalServices}
+                                <div class="mt-4 text-center">
+                                    <button 
+                                        type="button"
+                                        on:click={loadMore}
+                                        class="text-sm text-primary hover:underline hover:text-primary-hover font-medium"
+                                    >
+                                        Carregar mais serviços
+                                    </button>
+                                </div>
+                            {/if}
+
                         </div>
                     </div>
                     <div
                         class="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-border-light dark:border-border-dark flex items-center justify-end space-x-3"
                     >
                         <button
+                            type="button"
+                            on:click={() => window.history.back()}
                             class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 font-medium hover:bg-white dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                         >
                             Cancelar
                         </button>
                         <button
-                            class="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-md font-medium shadow-md transition-colors flex items-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                            type="button"
+                            on:click={handleSubmit}
+                            disabled={isSubmitting}
+                            class="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-md font-medium shadow-md transition-colors flex items-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
                         >
-                            <span
-                                class="material-symbols-outlined text-[20px] mr-2"
-                                >save</span
-                            >
-                            Salvar Prestador
+                            {#if isSubmitting}
+                                <span class="material-symbols-outlined animate-spin mr-2 text-[20px]">sync</span>
+                                Salvando...
+                            {:else}
+                                <span class="material-symbols-outlined text-[20px] mr-2">save</span>
+                                Salvar Prestador
+                            {/if}
                         </button>
                     </div>
                 </div>
+
                 <div
                     class="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-lg p-4 flex items-start"
                 >
@@ -351,6 +514,15 @@
         </div>
     </main>
 </div>
+
+<AlertModal
+    show={alertState.show}
+    title={alertState.title}
+    message={alertState.message}
+    type={alertState.type}
+    on:confirm={alertState.onConfirm}
+    on:cancel={() => alertState.show = false}
+/>
 
 <style>
     /* Custom scrollbar to match original style */

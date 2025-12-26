@@ -53,6 +53,9 @@
     // Erros de validação
     let editErrors: Record<string, string> = {};
 
+    // Cache busting para imagens (timestamp por serviço)
+    let imageTimestamps: Map<string, number> = new Map();
+
     // Estado do AlertModal
     let alertState = {
         show: false,
@@ -217,6 +220,12 @@
             });
 
             if (response.ok) {
+                // Atualiza timestamp da imagem se foi alterada
+                if (selectedImage) {
+                    imageTimestamps.set(editingService!.ID, Date.now());
+                    imageTimestamps = imageTimestamps; // Trigger reactivity
+                }
+                
                 // Atualiza lista localmente (Otimista)
                 services = services.map(s => {
                     if (s.ID === editingService!.ID) {
@@ -412,7 +421,9 @@
                                         class="h-48 overflow-hidden relative bg-gray-100 dark:bg-gray-800"
                                     >
                                         <img
-                                            src={service.ImagemUrl}
+                                            src={imageTimestamps.has(service.ID) 
+                                                ? `${service.ImagemUrl}?t=${imageTimestamps.get(service.ID)}` 
+                                                : service.ImagemUrl}
                                             alt={service.Nome}
                                             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                             on:error={(e) => {

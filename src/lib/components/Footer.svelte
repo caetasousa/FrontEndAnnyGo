@@ -1,125 +1,94 @@
-<footer
-  class="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 pt-16 pb-8"
->
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
-      <div class="col-span-1 md:col-span-1">
-        <div class="flex items-center space-x-2 mb-4">
-          <span class="material-icons text-primary">spa</span>
-          <span
-            class="font-bold text-xl tracking-tight text-gray-900 dark:text-white"
-            >Bella<span class="text-primary">Vita</span></span
-          >
-        </div>
-        <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">
-          Realçando sua beleza natural com cuidado e sofisticação desde 2015.
+<script lang="ts">
+  import type { FooterData } from '$lib/config/landingConfig';
+
+  export let data: FooterData;
+</script>
+
+<footer class="bg-gray-900 dark:bg-black border-t border-gray-700 dark:border-white/5 pt-28 pb-12">
+  <div class="container mx-auto px-4">
+    <div class="grid grid-cols-1 md:grid-cols-[2fr_1fr_1.5fr_1.5fr] gap-16 mb-24">
+      <!-- Brand -->
+      <div class="flex flex-col gap-8">
+        <a href="#home" class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center text-black font-bold text-xl shadow-[0_10px_15px_-3px_rgba(251,146,60,0.2)]">
+            B
+          </div>
+          <span class="text-2xl font-black text-white uppercase italic tracking-tight font-serif-bs">
+            BellaSalon
+          </span>
+        </a>
+        <p class="text-gray-400 text-lg leading-relaxed">
+          {data.description}
         </p>
-        <div class="flex space-x-4">
-          <a class="text-gray-400 hover:text-primary transition" href="/"
-            ><i class="material-icons">facebook</i></a
-          >
-          <a class="text-gray-400 hover:text-primary transition" href="/"
-            ><span class="font-bold">IG</span></a
-          >
+      </div>
+
+      <!-- Sections -->
+      {#each data.sections as section}
+        <div>
+          <h4 class="font-bold text-white mb-8 uppercase tracking-wider text-sm">
+            {section.title}
+          </h4>
+          <ul class="flex flex-col gap-5">
+            {#each section.links as link}
+              <li>
+                <a
+                  href={link.href}
+                  class="text-gray-400 text-sm font-medium hover:text-orange-500 transition-colors duration-300"
+                >
+                  {link.label}
+                </a>
+              </li>
+            {/each}
+          </ul>
         </div>
-      </div>
+      {/each}
+
+      <!-- Contact -->
       <div>
-        <h3
-          class="text-sm font-semibold text-gray-900 dark:text-white tracking-wider uppercase mb-4"
-        >
-          Serviços
-        </h3>
-        <ul class="space-y-3">
-          <li>
-            <a
-              class="text-base text-gray-500 dark:text-gray-400 hover:text-primary transition"
-              href="/">Cabelo</a
-            >
+        <h4 class="font-bold text-white mb-8 uppercase tracking-wider text-sm">
+          Visite-nos
+        </h4>
+        <ul class="flex flex-col gap-5">
+          <li class="flex items-center gap-3">
+            <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+            <span class="text-gray-400 text-sm font-medium">
+              {data.contact.address}
+            </span>
           </li>
-          <li>
-            <a
-              class="text-base text-gray-500 dark:text-gray-400 hover:text-primary transition"
-              href="/">Unhas</a
-            >
+          <li class="flex items-center gap-3">
+            <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+            <span class="text-gray-400 text-sm font-medium">
+              {data.contact.city}
+            </span>
           </li>
-          <li>
-            <a
-              class="text-base text-gray-500 dark:text-gray-400 hover:text-primary transition"
-              href="/">Maquiagem</a
-            >
+          <li class="flex items-center gap-3">
+            <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+            <span class="text-gray-400 text-sm font-medium">
+              {data.contact.phone}
+            </span>
           </li>
-          <li>
-            <a
-              class="text-base text-gray-500 dark:text-gray-400 hover:text-primary transition"
-              href="/">Estética Facial</a
-            >
-          </li>
-        </ul>
-      </div>
-      <div>
-        <h3
-          class="text-sm font-semibold text-gray-900 dark:text-white tracking-wider uppercase mb-4"
-        >
-          Empresa
-        </h3>
-        <ul class="space-y-3">
-          <li>
-            <a
-              class="text-base text-gray-500 dark:text-gray-400 hover:text-primary transition"
-              href="/">Sobre Nós</a
-            >
-          </li>
-          <li>
-            <a
-              class="text-base text-gray-500 dark:text-gray-400 hover:text-primary transition"
-              href="/">Carreiras</a
-            >
-          </li>
-          <li>
-            <a
-              class="text-base text-gray-500 dark:text-gray-400 hover:text-primary transition"
-              href="/">Blog</a
-            >
-          </li>
-          <li>
-            <a
-              class="text-base text-gray-500 dark:text-gray-400 hover:text-primary transition"
-              href="/">Contato</a
-            >
-          </li>
-        </ul>
-      </div>
-      <div>
-        <h3
-          class="text-sm font-semibold text-gray-900 dark:text-white tracking-wider uppercase mb-4"
-        >
-          Contato
-        </h3>
-        <ul class="space-y-3">
-          <li class="flex items-start text-gray-500 dark:text-gray-400">
-            <span class="material-icons text-sm mr-2 mt-1">location_on</span>
-            <span>Rua das Flores, 123<br />Centro, São Paulo - SP</span>
-          </li>
-          <li class="flex items-center text-gray-500 dark:text-gray-400">
-            <span class="material-icons text-sm mr-2">phone</span>
-            <span>(11) 99999-9999</span>
-          </li>
-          <li class="flex items-center text-gray-500 dark:text-gray-400">
-            <span class="material-icons text-sm mr-2">email</span>
-            <span>contato@bellasalon.com</span>
+          <li class="flex items-center gap-3">
+            <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+            <span class="text-gray-400 text-sm font-medium">
+              {data.contact.email}
+            </span>
           </li>
         </ul>
       </div>
     </div>
-    <div
-      class="border-t border-gray-200 dark:border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center"
-    >
-      <p class="text-base text-gray-400 text-center md:text-left">
-        © 2023 BellaVita. Todos os direitos reservados.
-      </p>
-      <div class="mt-4 md:mt-0 flex space-x-6 text-sm text-gray-400">
-        <a class="hover:text-primary transition" href="/">Privacidade</a>
-        <a class="hover:text-primary transition" href="/">Termos</a>
+
+    <!-- Bottom -->
+    <div class="border-t border-white/5 pt-12 flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-gray-500 font-bold uppercase tracking-wider">
+      <p>&copy; {data.copyright}</p>
+      <div class="flex gap-10">
+        {#each data.bottomLinks as link}
+          <a
+            href={link.href}
+            class="text-gray-500 underline decoration-orange-500/30 underline-offset-1 hover:text-gray-300 transition-colors duration-300"
+          >
+            {link.label}
+          </a>
+        {/each}
       </div>
     </div>
   </div>

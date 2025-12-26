@@ -1,6 +1,159 @@
 <script lang="ts">
+    import { onMount } from "svelte";
     import Sidebar from "$lib/components/Sidebar.svelte";
     import ThemeToggle from "$lib/components/ThemeToggle.svelte";
+
+    interface Service {
+        ID: string;
+        Nome: string;
+        Categoria: string;
+        DuracaoPadrao: number;
+        Preco: number;
+        ImagemUrl: string;
+    }
+
+    interface ApiResponse {
+        data: Service[];
+        limit: number;
+        page: number;
+        total: number;
+    }
+
+    // Estado dos serviços
+    let services: Service[] = [];
+    let featuredServices: Service[] = [];
+    let loading = true;
+    let error = "";
+
+    // Paginação
+    let page = 1;
+    let limit = 5; // Quantos serviços queremos mostrar por página
+    let apiLimit = 9; // Quantos buscamos da API (5 + 4 featured que serão filtrados)
+    let totalItems = 0;
+
+    // Calcula o total de páginas considerando que 4 serviços serão filtrados da primeira página
+    $: totalPages = Math.ceil((totalItems - 4) / limit);
+    $: hasMore = page < totalPages;
+
+    // Filtra os serviços para remover os que estão em destaque
+    $: filteredServices = services.filter(
+        (service) =>
+            !featuredServices.some((featured) => featured.ID === service.ID),
+    );
+
+    // Filtro de categoria
+    let selectedCategory = "Todos os Serviços";
+    let categories = [
+        "Todos os Serviços",
+        "Cabelo",
+        "Unhas",
+        "Estética Facial",
+        "Estética Corporal",
+        "Depilação",
+        "Maquiagem",
+        "Massagem",
+        "Tratamentos",
+    ];
+
+    async function fetchFeaturedServices() {
+        try {
+            const response = await fetch(`/api/v1/catalogos?page=1&limit=4`);
+            if (response.ok) {
+                const data: ApiResponse = await response.json();
+                featuredServices = data.data || [];
+            }
+        } catch (err) {
+            console.error("Erro ao carregar serviços em destaque:", err);
+        }
+    }
+
+    async function fetchServices() {
+        loading = true;
+        error = "";
+        try {
+            // Busca mais serviços para compensar os que serão filtrados
+            let url = `/api/v1/catalogos?page=${page}&limit=${apiLimit}`;
+
+            // Adiciona filtro de categoria se não for "Todos os Serviços"
+            if (selectedCategory !== "Todos os Serviços") {
+                url += `&categoria=${encodeURIComponent(selectedCategory)}`;
+            }
+
+            const response = await fetch(url);
+
+            if (response.ok) {
+                const data: ApiResponse = await response.json();
+                services = data.data || [];
+                totalItems = data.total || 0;
+            } else {
+                error = "Erro ao carregar serviços: " + response.statusText;
+            }
+        } catch (err) {
+            console.error("Erro na requisição:", err);
+            error = "Serviço indisponível no momento.";
+        } finally {
+            loading = false;
+        }
+    }
+
+    function loadMore() {
+        if (hasMore) {
+            page++;
+            fetchServices();
+        }
+    }
+
+    function selectCategory(category: string) {
+        selectedCategory = category;
+        page = 1; // Reset para primeira página ao mudar categoria
+        fetchServices();
+    }
+
+    function getCategoryIcon(categoria: string): string {
+        const icons: Record<string, string> = {
+            Cabelo: "content_cut",
+            Unhas: "front_hand",
+            "Estética Facial": "face",
+            "Estética Corporal": "spa",
+            Massagem: "self_improvement",
+            Depilação: "spa",
+            Maquiagem: "palette",
+            Tratamentos: "healing",
+        };
+        return icons[categoria] || "spa";
+    }
+
+    function getCategoryColor(categoria: string): string {
+        const colors: Record<string, string> = {
+            Cabelo: "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300",
+            Unhas: "bg-pink-100 dark:bg-pink-900 text-pink-700 dark:text-pink-300",
+            "Estética Facial":
+                "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300",
+            "Estética Corporal":
+                "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300",
+            Massagem:
+                "bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300",
+            Depilação:
+                "bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300",
+            Maquiagem:
+                "bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300",
+            Tratamentos:
+                "bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300",
+        };
+        return (
+            colors[categoria] ||
+            "bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300"
+        );
+    }
+
+    function formatPrice(priceInCents: number): string {
+        return (priceInCents / 100).toFixed(2).replace(".", ",");
+    }
+
+    onMount(() => {
+        fetchFeaturedServices();
+        fetchServices();
+    });
 </script>
 
 <div
@@ -29,7 +182,9 @@
                     <button
                         class="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg md:hidden"
                     >
-                        <span class="material-symbols-outlined">filter_list</span>
+                        <span class="material-symbols-outlined"
+                            >filter_list</span
+                        >
                     </button>
                 </div>
                 <div class="flex items-center gap-4 ml-4">
@@ -117,36 +272,17 @@
                 <div
                     class="flex overflow-x-auto pb-4 gap-3 mb-8 no-scrollbar scroll-smooth"
                 >
-                    <button
-                        class="whitespace-nowrap px-4 py-2 bg-primary text-white text-sm font-medium rounded-full shadow-md shadow-primary/30"
-                    >
-                        Todos os Serviços
-                    </button>
-                    <button
-                        class="whitespace-nowrap px-4 py-2 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium rounded-full transition-colors"
-                    >
-                        Cabelos
-                    </button>
-                    <button
-                        class="whitespace-nowrap px-4 py-2 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium rounded-full transition-colors"
-                    >
-                        Manicure &amp; Pedicure
-                    </button>
-                    <button
-                        class="whitespace-nowrap px-4 py-2 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium rounded-full transition-colors"
-                    >
-                        Estética Facial
-                    </button>
-                    <button
-                        class="whitespace-nowrap px-4 py-2 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium rounded-full transition-colors"
-                    >
-                        Cílios &amp; Sobrancelhas
-                    </button>
-                    <button
-                        class="whitespace-nowrap px-4 py-2 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium rounded-full transition-colors"
-                    >
-                        Maquiagem
-                    </button>
+                    {#each categories as category}
+                        <button
+                            on:click={() => selectCategory(category)}
+                            class="whitespace-nowrap px-4 py-2 {selectedCategory ===
+                            category
+                                ? 'bg-primary text-white shadow-md shadow-primary/30'
+                                : 'bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'} text-sm font-medium rounded-full transition-colors"
+                        >
+                            {category}
+                        </button>
+                    {/each}
                 </div>
                 <div class="mb-10">
                     <div class="flex items-center justify-between mb-6">
@@ -158,449 +294,254 @@
                             >
                             Mais Procurados
                         </h2>
-                        <a
-                            class="text-sm font-medium text-primary hover:text-orange-600 dark:hover:text-orange-400"
-                            href="/">Ver tudo</a
-                        >
                     </div>
-                    <div
-                        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-                    >
-                        <div
-                            class="group bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col"
-                        >
-                            <div class="relative h-48 overflow-hidden">
-                                <div
-                                    class="absolute top-3 right-3 z-10 bg-white/90 dark:bg-black/80 backdrop-blur px-2 py-1 rounded text-xs font-bold text-gray-900 dark:text-white shadow-sm flex items-center gap-1"
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-yellow-500 text-xs"
-                                        >star</span
-                                    > 4.9
-                                </div>
-                                <img
-                                    alt="Corte de Cabelo"
-                                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxXP3_nwScNevenWB4-fGAhGXc7iA5jxBdhn_V40PRRdJaCvfYn0d-_zAbgBS7w-rMU-MZvK0RPwT6I3trFkBoY6bifrOPYlLmD3vmZv8ZvBq8emoX6iuCtyb7os2a8XLkMbAJWpItw8L7M-xyEbEQDkVjuDJpa6qztpq4MRSsh1HW-AGMh9UaVI3He6_dX_wBlNV_eIOxHNI04X82juFyAEzhfRFPgGehuH1hu65BYmamQsY4qEN0Lyl0LUBm4oHVhUkTSEQYmCg"
-                                />
-                                <div
-                                    class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent h-20"
-                                ></div>
-                            </div>
-                            <div class="p-4 flex-1 flex flex-col">
-                                <div
-                                    class="mb-1 text-xs font-semibold text-primary uppercase tracking-wide"
-                                >
-                                    Cabelos
-                                </div>
-                                <h3
-                                    class="text-lg font-bold text-gray-900 dark:text-white mb-2"
-                                >
-                                    Corte e Hidratação
-                                </h3>
-                                <p
-                                    class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4"
-                                >
-                                    Corte personalizado com visagismo e
-                                    hidratação profunda.
-                                </p>
-                                <div
-                                    class="mt-auto flex items-center justify-between pt-4 border-t border-border-light dark:border-border-dark"
-                                >
-                                    <div>
-                                        <span
-                                            class="text-xs text-gray-400 block"
-                                            >A partir de</span
-                                        >
-                                        <span
-                                            class="text-lg font-bold text-gray-900 dark:text-white"
-                                            >R$ 120,00</span
-                                        >
-                                    </div>
-                                    <button
-                                        class="p-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-primary hover:text-white dark:hover:bg-primary dark:hover:text-white transition-colors"
-                                    >
-                                        <span class="material-symbols-outlined"
-                                            >arrow_forward</span
-                                        >
-                                    </button>
-                                </div>
-                            </div>
+
+                    {#if loading}
+                        <div class="flex justify-center py-12">
+                            <span
+                                class="material-icons animate-spin text-primary text-4xl"
+                                >sync</span
+                            >
                         </div>
+                    {:else if error}
                         <div
-                            class="group bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col"
+                            class="bg-red-50 text-red-700 p-4 rounded-md border border-red-200"
                         >
-                            <div class="relative h-48 overflow-hidden">
-                                <div
-                                    class="absolute top-3 right-3 z-10 bg-white/90 dark:bg-black/80 backdrop-blur px-2 py-1 rounded text-xs font-bold text-gray-900 dark:text-white shadow-sm flex items-center gap-1"
-                                >
-                                    <span
-                                        class="material-icons-outlined text-yellow-500 text-xs"
-                                        >star</span
-                                    > 5.0
-                                </div>
-                                <img
-                                    alt="Manicure"
-                                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhFiOln_rEyvs4CsRnLviJYo5q-e1z4xjSdSu5HEhfOo1ZFwRs8Yz33SWo6Hc3qAbvoe7p2t44wR4ZGNmRr4qgzsbiD0eE0HXxtKG6rG6mCzipkLAjY-0OQpwlnnBAKJFXF9Nv_v3i1-gSCxxhzZN1qQowsCrXSyURMPImq7Jv9SUm36zZsLla8IhbNrnXzwQj_RqX9uG25jaEGdBEcthS_iZ00mOdpXXdZY_WT3Mn0nt9mAtsa2Wx6tOmgJYuW3UD5CQVjhLlLUQ"
-                                />
-                                <div
-                                    class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent h-20"
-                                ></div>
-                            </div>
-                            <div class="p-4 flex-1 flex flex-col">
-                                <div
-                                    class="mb-1 text-xs font-semibold text-primary uppercase tracking-wide"
-                                >
-                                    Unhas
-                                </div>
-                                <h3
-                                    class="text-lg font-bold text-gray-900 dark:text-white mb-2"
-                                >
-                                    Manicure em Gel
-                                </h3>
-                                <p
-                                    class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4"
-                                >
-                                    Aplicação de unhas em gel com acabamento
-                                    natural e duradouro.
-                                </p>
-                                <div
-                                    class="mt-auto flex items-center justify-between pt-4 border-t border-border-light dark:border-border-dark"
-                                >
-                                    <div>
-                                        <span
-                                            class="text-xs text-gray-400 block"
-                                            >A partir de</span
-                                        >
-                                        <span
-                                            class="text-lg font-bold text-gray-900 dark:text-white"
-                                            >R$ 85,00</span
-                                        >
-                                    </div>
-                                    <button
-                                        class="p-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-primary hover:text-white dark:hover:bg-primary dark:hover:text-white transition-colors"
-                                    >
-                                        <span class="material-symbols-outlined"
-                                            >arrow_forward</span
-                                        >
-                                    </button>
-                                </div>
-                            </div>
+                            {error}
                         </div>
+                    {:else if featuredServices.length === 0}
                         <div
-                            class="group bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col"
+                            class="text-center py-12 text-gray-500 dark:text-gray-400"
                         >
-                            <div class="relative h-48 overflow-hidden">
-                                <div
-                                    class="absolute top-3 right-3 z-10 bg-white/90 dark:bg-black/80 backdrop-blur px-2 py-1 rounded text-xs font-bold text-gray-900 dark:text-white shadow-sm flex items-center gap-1"
-                                >
-                                    <span
-                                        class="material-icons-outlined text-yellow-500 text-xs"
-                                        >star</span
-                                    > 4.8
-                                </div>
-                                <img
-                                    alt="Sobrancelhas"
-                                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTaYu7tGMsiaGIhwjQJ7I-fUsGrLaGv8HZQ8l8s9UyrKDmiLAZtKmIh5m_3diMXlr_ddAGKKyE1CDjJ8qSNIM4xWe1Oo6FIAVHAycYBA9SqAVZfTQ8wGkeEuqPgPFj_g_jS3I-De2AjZfl34XYX5ldsQLPTzkyD4_9uAEYeYutXpU-srSpkCqnF0NCVEi0fxPwPKuW-H5htCxomFgsgB7V-jXah3NNMpL0FEffKEIyOzpCkCYgbn7yG8Cbl6C92qEk8Leo2H2-v8k"
-                                />
-                                <div
-                                    class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent h-20"
-                                ></div>
-                            </div>
-                            <div class="p-4 flex-1 flex flex-col">
-                                <div
-                                    class="mb-1 text-xs font-semibold text-primary uppercase tracking-wide"
-                                >
-                                    Rosto
-                                </div>
-                                <h3
-                                    class="text-lg font-bold text-gray-900 dark:text-white mb-2"
-                                >
-                                    Design de Sobrancelha
-                                </h3>
-                                <p
-                                    class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4"
-                                >
-                                    Design com henna para realçar o olhar de
-                                    forma harmônica.
-                                </p>
-                                <div
-                                    class="mt-auto flex items-center justify-between pt-4 border-t border-border-light dark:border-border-dark"
-                                >
-                                    <div>
-                                        <span
-                                            class="text-xs text-gray-400 block"
-                                            >A partir de</span
-                                        >
-                                        <span
-                                            class="text-lg font-bold text-gray-900 dark:text-white"
-                                            >R$ 45,00</span
-                                        >
-                                    </div>
-                                    <button
-                                        class="p-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-primary hover:text-white dark:hover:bg-primary dark:hover:text-white transition-colors"
-                                    >
-                                        <span class="material-symbols-outlined"
-                                            >arrow_forward</span
-                                        >
-                                    </button>
-                                </div>
-                            </div>
+                            Nenhum serviço disponível no momento.
                         </div>
+                    {:else}
                         <div
-                            class="group bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col"
+                            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
                         >
-                            <div class="relative h-48 overflow-hidden">
+                            {#each featuredServices as service}
                                 <div
-                                    class="absolute top-3 right-3 z-10 bg-white/90 dark:bg-black/80 backdrop-blur px-2 py-1 rounded text-xs font-bold text-gray-900 dark:text-white shadow-sm flex items-center gap-1"
+                                    class="group bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col"
                                 >
-                                    <span
-                                        class="material-icons-outlined text-yellow-500 text-xs"
-                                        >star</span
-                                    > 5.0
-                                </div>
-                                <img
-                                    alt="Maquiagem"
-                                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhqBmwiqx0qeJAkn2_oDnsxFdk2O6MBSTN4f_OYijB_FGRQs_4hIyMqk4az8fnQgHRvJbSr2bXr8hIwddyhOSNe5whOcyl5jDoExKEWM684viMgEKT5KCA-q0O7KIndgZpVs06fJsx77Adnjb-7Ro-EGECp_bwZR8_4jThsXRUMnmyz8ImgT7Ob_Kh0S7QOokTCQ2QijEypXX5X8o1BzfPLQ111vLgmj_TfSSxvMEFKOSMxEwgSU6eteEaj8i59EL3eFKN6kUkNdg"
-                                />
-                                <div
-                                    class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent h-20"
-                                ></div>
-                            </div>
-                            <div class="p-4 flex-1 flex flex-col">
-                                <div
-                                    class="mb-1 text-xs font-semibold text-primary uppercase tracking-wide"
-                                >
-                                    Make-up
-                                </div>
-                                <h3
-                                    class="text-lg font-bold text-gray-900 dark:text-white mb-2"
-                                >
-                                    Maquiagem Social
-                                </h3>
-                                <p
-                                    class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4"
-                                >
-                                    Maquiagem profissional para eventos e festas
-                                    com produtos premium.
-                                </p>
-                                <div
-                                    class="mt-auto flex items-center justify-between pt-4 border-t border-border-light dark:border-border-dark"
-                                >
-                                    <div>
-                                        <span
-                                            class="text-xs text-gray-400 block"
-                                            >A partir de</span
-                                        >
-                                        <span
-                                            class="text-lg font-bold text-gray-900 dark:text-white"
-                                            >R$ 150,00</span
-                                        >
+                                    <div class="relative h-48 overflow-hidden">
+                                        {#if service.ImagemUrl}
+                                            <img
+                                                alt={service.Nome}
+                                                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                src={service.ImagemUrl}
+                                                on:error={(e) => {
+                                                    (
+                                                        e.target as HTMLImageElement
+                                                    ).src =
+                                                        "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=600";
+                                                }}
+                                            />
+                                        {:else}
+                                            <div
+                                                class="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center"
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-6xl text-gray-400"
+                                                    >image</span
+                                                >
+                                            </div>
+                                        {/if}
+                                        <div
+                                            class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent h-20"
+                                        ></div>
                                     </div>
-                                    <button
-                                        class="p-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-primary hover:text-white dark:hover:bg-primary dark:hover:text-white transition-colors"
-                                    >
-                                        <span class="material-symbols-outlined"
-                                            >arrow_forward</span
+                                    <div class="p-4 flex-1 flex flex-col">
+                                        <div
+                                            class="mb-1 text-xs font-semibold text-primary uppercase tracking-wide"
                                         >
-                                    </button>
+                                            {service.Categoria}
+                                        </div>
+                                        <h3
+                                            class="text-lg font-bold text-gray-900 dark:text-white mb-2"
+                                        >
+                                            {service.Nome}
+                                        </h3>
+                                        <p
+                                            class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4"
+                                        >
+                                            Duração: {service.DuracaoPadrao} minutos
+                                        </p>
+                                        <div
+                                            class="mt-auto flex items-center justify-between pt-4 border-t border-border-light dark:border-border-dark"
+                                        >
+                                            <div>
+                                                <span
+                                                    class="text-xs text-gray-400 block"
+                                                    >A partir de</span
+                                                >
+                                                <span
+                                                    class="text-lg font-bold text-gray-900 dark:text-white"
+                                                    >R$ {formatPrice(
+                                                        service.Preco,
+                                                    )}</span
+                                                >
+                                            </div>
+                                            <a
+                                                href="/listagem/{service.ID}"
+                                                class="p-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-primary hover:text-white dark:hover:bg-primary dark:hover:text-white transition-colors inline-flex items-center justify-center"
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined"
+                                                    >arrow_forward</span
+                                                >
+                                            </a>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            {/each}
                         </div>
-                    </div>
+                    {/if}
                 </div>
+
                 <div class="mb-10">
                     <h2
                         class="text-xl font-bold text-gray-900 dark:text-white mb-6"
                     >
                         Todos os Serviços
                     </h2>
-                    <div
-                        class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark divide-y divide-border-light dark:divide-border-dark"
-                    >
+
+                    {#if loading}
+                        <div class="flex justify-center py-12">
+                            <span
+                                class="material-icons animate-spin text-primary text-4xl"
+                                >sync</span
+                            >
+                        </div>
+                    {:else if error}
                         <div
-                            class="p-6 flex flex-col md:flex-row gap-6 items-start md:items-center hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                            class="bg-red-50 text-red-700 p-4 rounded-md border border-red-200"
                         >
-                            <div
-                                class="w-20 h-20 rounded-lg bg-gray-200 dark:bg-gray-700 overflow-hidden flex-shrink-0"
-                            >
-                                <img
-                                    alt="Extensão de Cílios"
-                                    class="w-full h-full object-cover"
-                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuD1Qmbp2I2YWtuLnsQ8XNJtrJx7L3SmM7c2yfHjEZ20D_-Pud6zgxa4Cwj5bWWhKlYkS8y1TnW7ud5Q8zp3n9fWIerM3phnbQswzp-rlD2kC-_RgHEsnKRRLg1FpfuSkebkpfklZar2VFcwYbMN5ZoU0ctit4w_W8pM4CgNSXCMuIaBp7OLCoF4jfo55JUXfRk60pTCjg9ifmvixML78UNNoZI5fJcBjljydq9oBGLyWwyFd0WAH7QX-zr23kJFgbmXOXCLfbALcE8"
-                                />
-                            </div>
-                            <div class="flex-1">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <h3
-                                        class="text-lg font-bold text-gray-900 dark:text-white"
-                                    >
-                                        Extensão de Cílios Volume Russo
-                                    </h3>
-                                    <span
-                                        class="px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs font-semibold rounded-full"
-                                        >Novo</span
-                                    >
-                                </div>
-                                <p
-                                    class="text-sm text-gray-500 dark:text-gray-400 mb-2"
-                                >
-                                    Técnica avançada que aplica múltiplos fios
-                                    finos em cada cílio natural.
-                                </p>
+                            {error}
+                        </div>
+                    {:else if filteredServices.length === 0}
+                        <div
+                            class="text-center py-12 text-gray-500 dark:text-gray-400"
+                        >
+                            Nenhum serviço cadastrado ainda.
+                        </div>
+                    {:else}
+                        <div
+                            class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark divide-y divide-border-light dark:divide-border-dark"
+                        >
+                            {#each filteredServices as service}
                                 <div
-                                    class="flex items-center gap-4 text-xs text-gray-500"
+                                    class="p-6 flex flex-col md:flex-row gap-6 items-start md:items-center hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                                 >
-                                    <span class="flex items-center gap-1"
-                                        ><span
-                                            class="material-symbols-outlined text-sm"
-                                            >schedule</span
-                                        > 120 min</span
+                                    <div
+                                        class="w-20 h-20 rounded-lg bg-gray-200 dark:bg-gray-700 overflow-hidden flex-shrink-0"
                                     >
-                                    <span class="flex items-center gap-1"
-                                        ><span
-                                            class="material-symbols-outlined text-sm"
-                                            >person</span
-                                        > Prof. Ana &amp; Carla</span
+                                        {#if service.ImagemUrl}
+                                            <img
+                                                alt={service.Nome}
+                                                class="w-full h-full object-cover"
+                                                src={service.ImagemUrl}
+                                                on:error={(e) => {
+                                                    (
+                                                        e.target as HTMLImageElement
+                                                    ).src =
+                                                        "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=200";
+                                                }}
+                                            />
+                                        {:else}
+                                            <div
+                                                class="w-full h-full flex items-center justify-center"
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-3xl text-gray-400"
+                                                    >image</span
+                                                >
+                                            </div>
+                                        {/if}
+                                    </div>
+                                    <div class="flex-1">
+                                        <div
+                                            class="flex items-center gap-2 mb-1"
+                                        >
+                                            <a href="/listagem/{service.ID}">
+                                                <h3
+                                                    class="text-lg font-bold text-gray-900 dark:text-white hover:text-primary transition-colors cursor-pointer"
+                                                >
+                                                    {service.Nome}
+                                                </h3>
+                                            </a>
+                                            <span
+                                                class="px-2 py-0.5 {getCategoryColor(
+                                                    service.Categoria,
+                                                )} text-xs font-semibold rounded-full"
+                                                >{service.Categoria}</span
+                                            >
+                                        </div>
+                                        <div
+                                            class="flex items-center gap-4 text-xs text-gray-500 mt-2"
+                                        >
+                                            <span
+                                                class="flex items-center gap-1"
+                                                ><span
+                                                    class="material-symbols-outlined text-sm"
+                                                    >schedule</span
+                                                >
+                                                {service.DuracaoPadrao} min</span
+                                            >
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="flex flex-col items-end gap-2 w-full md:w-auto"
                                     >
+                                        <div
+                                            class="text-xl font-bold text-gray-900 dark:text-white"
+                                        >
+                                            R$ {formatPrice(service.Preco)}
+                                        </div>
+                                        <a
+                                            href="/listagem/{service.ID}"
+                                            class="w-full md:w-auto px-4 py-2 bg-primary hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors text-center inline-block"
+                                        >
+                                            Agendar
+                                        </a>
+                                    </div>
                                 </div>
-                            </div>
+                            {/each}
+                        </div>
+
+                        <!-- Pagination -->
+                        {#if totalPages > 1}
                             <div
-                                class="flex flex-col items-end gap-2 w-full md:w-auto"
+                                class="mt-8 flex justify-center items-center gap-4"
                             >
-                                <div
-                                    class="text-xl font-bold text-gray-900 dark:text-white"
-                                >
-                                    R$ 180,00
-                                </div>
                                 <button
-                                    class="w-full md:w-auto px-4 py-2 bg-primary hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors"
+                                    on:click|preventDefault={() => {
+                                        page--;
+                                        fetchServices();
+                                    }}
+                                    disabled={page === 1}
+                                    class="px-4 py-2 bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
-                                    Agendar
+                                    Anterior
+                                </button>
+                                <span class="text-gray-600 dark:text-gray-400">
+                                    Página {page} de {totalPages}
+                                </span>
+                                <button
+                                    on:click|preventDefault={() => {
+                                        page++;
+                                        fetchServices();
+                                    }}
+                                    disabled={page === totalPages}
+                                    class="px-4 py-2 bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    Próxima
                                 </button>
                             </div>
-                        </div>
-                        <div
-                            class="p-6 flex flex-col md:flex-row gap-6 items-start md:items-center hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                        >
-                            <div
-                                class="w-20 h-20 rounded-lg bg-gray-200 dark:bg-gray-700 overflow-hidden flex-shrink-0"
-                            >
-                                <img
-                                    alt="Coloração"
-                                    class="w-full h-full object-cover"
-                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDD4JE3Zsj1WIdbX1jDDcjRuqycv-VKnhim-Dq9dPe246Ik3QX7-X-MWrOZ1th892OtjSyA5NqBvXG1Yoyz3IVWkRqTHaMNdr2h7YMN2FzXSts4RvtbcvEAyUA7yWOa2xS9xkbMCNl9MidBCSlUJ1VZynWQqKFSR10tPN03Tdo1h10YLPJEWFkQtbQOo66SQuonay45vrnU2sxcH9cJaxOuKBGXs9Of7eIql4V0oH9cztTbowEjAxwHiGuuMs-9qNtvHovidxAjSrk"
-                                />
-                            </div>
-                            <div class="flex-1">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <h3
-                                        class="text-lg font-bold text-gray-900 dark:text-white"
-                                    >
-                                        Coloração Completa
-                                    </h3>
-                                </div>
-                                <p
-                                    class="text-sm text-gray-500 dark:text-gray-400 mb-2"
-                                >
-                                    Coloração profissional com produtos
-                                    Schwarzkopf ou L'Oréal.
-                                </p>
-                                <div
-                                    class="flex items-center gap-4 text-xs text-gray-500"
-                                >
-                                    <span class="flex items-center gap-1"
-                                        ><span
-                                            class="material-icons-outlined text-sm"
-                                            >schedule</span
-                                        > 90 min</span
-                                    >
-                                    <span class="flex items-center gap-1"
-                                        ><span
-                                            class="material-icons-outlined text-sm"
-                                            >person</span
-                                        > Prof. Marcos</span
-                                    >
-                                </div>
-                            </div>
-                            <div
-                                class="flex flex-col items-end gap-2 w-full md:w-auto"
-                            >
-                                <div
-                                    class="text-xl font-bold text-gray-900 dark:text-white"
-                                >
-                                    R$ 220,00
-                                </div>
-                                <button
-                                    class="w-full md:w-auto px-4 py-2 bg-primary hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors"
-                                >
-                                    Agendar
-                                </button>
-                            </div>
-                        </div>
-                        <div
-                            class="p-6 flex flex-col md:flex-row gap-6 items-start md:items-center hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                        >
-                            <div
-                                class="w-20 h-20 rounded-lg bg-gray-200 dark:bg-gray-700 overflow-hidden flex-shrink-0"
-                            >
-                                <img
-                                    alt="Spa dos Pés"
-                                    class="w-full h-full object-cover"
-                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYI4Dq9bnevoQIZuj2PJd5sQ4PJBe3_TNfOF5NgnNANz2FtSZXRf9Nhw2_QOQM8xiLcdqWsMUIKFTFQRDUxx1WXBK4t5PNeUowqoBkP67l9oOJO8Btj5mXwXj1pvcsPWd7QaPPJXm2WFEqVZQTLc2ZLAOmyjMSqb4msyJMQwyKfIkWE3GsqUnRegwkkRZG2rY4MUqb-HEsu9ZcZEJ5-xsGqq7zns6kgo4kFTKpd0WpZ3eeNGtUjDAdKw_UqqMDjmC5OZPw6sFoI54"
-                                />
-                            </div>
-                            <div class="flex-1">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <h3
-                                        class="text-lg font-bold text-gray-900 dark:text-white"
-                                    >
-                                        Spa dos Pés + Pedicure
-                                    </h3>
-                                </div>
-                                <p
-                                    class="text-sm text-gray-500 dark:text-gray-400 mb-2"
-                                >
-                                    Esfoliação, hidratação profunda e massagem
-                                    relaxante nos pés.
-                                </p>
-                                <div
-                                    class="flex items-center gap-4 text-xs text-gray-500"
-                                >
-                                    <span class="flex items-center gap-1"
-                                        ><span
-                                            class="material-icons-outlined text-sm"
-                                            >schedule</span
-                                        > 60 min</span
-                                    >
-                                    <span class="flex items-center gap-1"
-                                        ><span
-                                            class="material-icons-outlined text-sm"
-                                            >person</span
-                                        > Prof. Júlia</span
-                                    >
-                                </div>
-                            </div>
-                            <div
-                                class="flex flex-col items-end gap-2 w-full md:w-auto"
-                            >
-                                <div
-                                    class="text-xl font-bold text-gray-900 dark:text-white"
-                                >
-                                    R$ 95,00
-                                </div>
-                                <button
-                                    class="w-full md:w-auto px-4 py-2 bg-primary hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors"
-                                >
-                                    Agendar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                        {/if}
+                    {/if}
                 </div>
+
+                <!-- Footer -->
                 <div
                     class="mt-12 border-t border-border-light dark:border-border-dark pt-8 pb-4 text-center text-sm text-gray-500"
                 >
