@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { User, ArrowRight } from 'lucide-svelte';
+  import User from 'lucide-svelte/icons/user';
+  import ArrowRight from 'lucide-svelte/icons/arrow-right';
   import type { TestimonialData } from '$lib/config/landingConfig';
 
   export let testimonials: TestimonialData[];

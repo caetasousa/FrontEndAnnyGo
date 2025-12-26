@@ -1,6 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { Menu, X, Search, Sun, Moon } from 'lucide-svelte';
+  import Menu from 'lucide-svelte/icons/menu';
+  import X from 'lucide-svelte/icons/x';
+  import Search from 'lucide-svelte/icons/search';
+  import Sun from 'lucide-svelte/icons/sun';
+  import Moon from 'lucide-svelte/icons/moon';
   import { theme } from '$lib/stores/theme';
 
   let isMobileMenuOpen = false;

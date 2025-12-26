@@ -17,6 +17,8 @@
     let loading = true;
     let error = "";
 
+
+
     function getCategoryColor(categoria: string): string {
         const colors: Record<string, string> = {
             "Cabelo": "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300",
