@@ -6,6 +6,8 @@
     export let title = "";
     export let maxWidth = "max-w-md";
 
+    export let zIndex = "z-50";
+
     const dispatch = createEventDispatcher();
 
     function close() {
@@ -23,7 +25,7 @@
 
 {#if show}
     <div
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+        class="fixed inset-0 {zIndex} flex items-center justify-center p-4 sm:p-6"
         role="dialog"
         aria-modal="true"
     >
@@ -38,11 +40,11 @@
 
         <!-- Modal Content -->
         <div
-            class="relative w-full {maxWidth} bg-surface-light dark:bg-surface-dark rounded-2xl shadow-2xl border border-border-light dark:border-border-dark overflow-hidden z-10"
+            class="relative w-full {maxWidth} max-h-[90vh] flex flex-col bg-[hsl(var(--bs-card))] rounded-2xl shadow-2xl border border-border-light dark:border-border-dark overflow-hidden z-10"
             transition:fly={{ y: 20, duration: 300, opacity: 0 }}
         >
             <div
-                class="px-6 py-4 border-b border-border-light dark:border-border-dark flex items-center justify-between"
+                class="px-4 py-3 sm:px-6 sm:py-4 border-b border-border-light dark:border-border-dark flex items-center justify-between shrink-0"
             >
                 <h3
                     class="text-lg font-bold text-gray-900 dark:text-white font-display"
@@ -57,13 +59,13 @@
                 </button>
             </div>
 
-            <div class="p-6">
+            <div class="p-4 sm:p-6 overflow-y-auto">
                 <slot name="body" />
             </div>
 
             {#if $$slots.footer}
                 <div
-                    class="px-6 py-4 bg-gray-50/50 dark:bg-gray-800/50 border-t border-border-light dark:border-border-dark flex justify-end space-x-3"
+                    class="px-4 py-3 sm:px-6 sm:py-4 bg-[hsl(var(--bs-muted))]/50 border-t border-border-light dark:border-border-dark flex justify-end space-x-3 shrink-0"
                 >
                     <slot name="footer" />
                 </div>

@@ -23,27 +23,41 @@
     }
 
     // Cores baseadas no tipo
-    $: iconColor = 
-        type === "error" ? "text-red-500" :
-        type === "success" ? "text-green-500" :
-        type === "warning" ? "text-brand-orange" :
-        "text-blue-500";
+    $: iconColor =
+        type === "error"
+            ? "text-red-500"
+            : type === "success"
+              ? "text-green-500"
+              : type === "warning"
+                ? "text-brand-orange"
+                : "text-blue-500";
 
-    $: iconName = 
-        type === "error" ? "error" :
-        type === "success" ? "check_circle" :
-        type === "warning" ? "warning" :
-        "info";
-        
-    $: confirmBtnClass = 
-        type === "error" ? "bg-red-500 hover:bg-red-600 focus:ring-red-500" :
-        type === "success" ? "bg-green-500 hover:bg-green-600 focus:ring-green-500" :
-        type === "warning" ? "bg-brand-orange hover:bg-brand-orange-hover focus:ring-brand-orange" :
-        "bg-blue-500 hover:bg-blue-600 focus:ring-blue-500";
+    $: iconName =
+        type === "error"
+            ? "error"
+            : type === "success"
+              ? "check_circle"
+              : type === "warning"
+                ? "warning"
+                : "info";
 
+    $: confirmBtnClass =
+        type === "error"
+            ? "bg-red-500 hover:bg-red-600 focus:ring-red-500"
+            : type === "success"
+              ? "bg-green-500 hover:bg-green-600 focus:ring-green-500"
+              : type === "warning"
+                ? "bg-brand-orange hover:bg-brand-orange-hover focus:ring-brand-orange"
+                : "bg-blue-500 hover:bg-blue-600 focus:ring-blue-500";
 </script>
 
-<Modal {show} {title} maxWidth="max-w-sm" on:close={handleCancel}>
+<Modal
+    {show}
+    {title}
+    maxWidth="max-w-sm"
+    zIndex="z-[60]"
+    on:close={handleCancel}
+>
     <div slot="body" class="text-center py-2">
         <div class="mb-4 flex justify-center">
             <span class="material-symbols-outlined text-5xl {iconColor}">

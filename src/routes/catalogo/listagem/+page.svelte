@@ -5,7 +5,10 @@
     import Modal from "$lib/components/Modal.svelte";
     import ImageUpload from "$lib/components/ImageUpload.svelte";
     import AlertModal from "$lib/components/AlertModal.svelte";
-    import { uploadImageToSupabase, deleteImageFromSupabase } from "$lib/utils/imageUpload";
+    import {
+        uploadImageToSupabase,
+        deleteImageFromSupabase,
+    } from "$lib/utils/imageUpload";
     import { validateEditServiceForm } from "$lib/utils/validation";
 
     interface Service {
@@ -27,12 +30,12 @@
     let services: Service[] = [];
     let loading = true;
     let error = "";
-    
+
     // Paginação
     let page = 1;
-    let limit = 12; 
+    let limit = 12;
     let totalItems = 0;
-    
+
     $: totalPages = Math.ceil(totalItems / limit);
 
     // Edição
@@ -45,7 +48,7 @@
     let editCategoria = "";
     let editDuracao = 60;
     let editPreco = ""; // Preço visual em Reais ("120,00")
-    
+
     // Imagem do modal de edição
     let selectedImage: File | null = null;
     let imagePreview: string | null = null;
@@ -68,13 +71,23 @@
     };
 
     function showAlert(
-        title: string, 
-        message: string, 
+        title: string,
+        message: string,
         type: "success" | "error" | "warning" | "info" = "info",
         showCancel = false,
-        onConfirm: () => void = () => { alertState.show = false; }
+        onConfirm: () => void = () => {
+            alertState.show = false;
+        },
     ) {
-        alertState = { show: true, title, message, type, showCancel, confirmText: showCancel ? "Confirmar" : "OK", onConfirm };
+        alertState = {
+            show: true,
+            title,
+            message,
+            type,
+            showCancel,
+            confirmText: showCancel ? "Confirmar" : "OK",
+            onConfirm,
+        };
     }
 
     function closeAlert() {
@@ -133,17 +146,19 @@
         editCategoria = service.Categoria;
         editDuracao = service.DuracaoPadrao;
         // Preço vem em centavos (12000), converte para string visual (120,00)
-        editPreco = (service.Preco / 100).toFixed(2).replace('.', ','); 
-        
+        editPreco = (service.Preco / 100).toFixed(2).replace(".", ",");
+
         // Reset imagem e erros
         selectedImage = null;
         imagePreview = service.ImagemUrl;
         editErrors = {};
-        
+
         showEditModal = true;
     }
 
-    function handleImageSelect(event: CustomEvent<{ file: File; preview: string }>) {
+    function handleImageSelect(
+        event: CustomEvent<{ file: File; preview: string }>,
+    ) {
         selectedImage = event.detail.file;
         imagePreview = event.detail.preview;
     }
@@ -153,18 +168,19 @@
         imagePreview = null;
     }
 
-
-
     async function handleUpdate() {
         if (!editingService) return;
-        
+
         // Validação usando utilitário extraído
-        editErrors = validateEditServiceForm({
-            nome: editNome,
-            categoria: editCategoria,
-            duracao: editDuracao,
-            preco: editPreco
-        }, !!(imagePreview || selectedImage));
+        editErrors = validateEditServiceForm(
+            {
+                nome: editNome,
+                categoria: editCategoria,
+                duracao: editDuracao,
+                preco: editPreco,
+            },
+            !!(imagePreview || selectedImage),
+        );
 
         if (Object.keys(editErrors).length > 0) {
             return;
@@ -175,49 +191,58 @@
         try {
             // Converter preço visual "120,00" para centavos 12000
             const precoCentavos = Math.round(
-                parseFloat(editPreco.replace(",", ".")) * 100
+                parseFloat(editPreco.replace(",", ".")) * 100,
             );
 
             // Upload de imagem se houver nova
             let imageUrl = editingService.ImagemUrl;
-            
+
             if (selectedImage) {
                 const newImageUrl = await uploadImageToSupabase(selectedImage);
                 if (newImageUrl) {
-                     // Deletar antiga se for diferente (e se não for nula, mas a interface diz string)
-                     // Verificar se a antiga era do supabase para deletar
-                     if (editingService.ImagemUrl && editingService.ImagemUrl !== newImageUrl) {
-                         await deleteImageFromSupabase(editingService.ImagemUrl);
-                     }
-                     imageUrl = newImageUrl;
+                    // Deletar antiga se for diferente (e se não for nula, mas a interface diz string)
+                    // Verificar se a antiga era do supabase para deletar
+                    if (
+                        editingService.ImagemUrl &&
+                        editingService.ImagemUrl !== newImageUrl
+                    ) {
+                        await deleteImageFromSupabase(editingService.ImagemUrl);
+                    }
+                    imageUrl = newImageUrl;
                 } else {
-                    showAlert("Erro", "Erro ao fazer upload da imagem.", "error");
+                    showAlert(
+                        "Erro",
+                        "Erro ao fazer upload da imagem.",
+                        "error",
+                    );
                     isUpdating = false;
                     return;
                 }
             } else if (!imagePreview) {
-                 // Caso o usuário tenha limpado a imagem e não selecionado outra (já validado, mas segurança extra)
-                 showAlert("Erro", "A imagem é obrigatória.", "error");
-                 isUpdating = false;
-                 return;
+                // Caso o usuário tenha limpado a imagem e não selecionado outra (já validado, mas segurança extra)
+                showAlert("Erro", "A imagem é obrigatória.", "error");
+                isUpdating = false;
+                return;
             }
-
 
             const payload = {
                 categoria: editCategoria,
                 duracao_padrao: editDuracao,
                 image_url: imageUrl,
                 nome: editNome,
-                preco: precoCentavos
+                preco: precoCentavos,
             };
 
-            const response = await fetch(`/api/v1/catalogos/${editingService.ID}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
+            const response = await fetch(
+                `/api/v1/catalogos/${editingService.ID}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(payload),
                 },
-                body: JSON.stringify(payload),
-            });
+            );
 
             if (response.ok) {
                 // Atualiza timestamp da imagem se foi alterada
@@ -225,17 +250,17 @@
                     imageTimestamps.set(editingService!.ID, Date.now());
                     imageTimestamps = imageTimestamps; // Trigger reactivity
                 }
-                
+
                 // Atualiza lista localmente (Otimista)
-                services = services.map(s => {
+                services = services.map((s) => {
                     if (s.ID === editingService!.ID) {
-                        return { 
-                            ...s, 
-                            Nome: editNome, 
-                            Categoria: editCategoria, 
-                            DuracaoPadrao: editDuracao, 
+                        return {
+                            ...s,
+                            Nome: editNome,
+                            Categoria: editCategoria,
+                            DuracaoPadrao: editDuracao,
                             Preco: precoCentavos,
-                            ImagemUrl: imageUrl 
+                            ImagemUrl: imageUrl,
                         };
                     }
                     return s;
@@ -244,7 +269,11 @@
             } else {
                 // Se falhar e tiver subido imagem nova, talvez devessemos deletar?
                 // Por simplicidade, deixamos lá ou o user tenta de novo.
-                showAlert("Erro", "Erro ao atualizar serviço: " + response.statusText, "error");
+                showAlert(
+                    "Erro",
+                    "Erro ao atualizar serviço: " + response.statusText,
+                    "error",
+                );
             }
         } catch (error) {
             console.error(error);
@@ -265,16 +294,23 @@
                 try {
                     // 1. Deletar imagem do Supabase se existir
                     if (service.ImagemUrl) {
-                        const deleted = await deleteImageFromSupabase(service.ImagemUrl);
+                        const deleted = await deleteImageFromSupabase(
+                            service.ImagemUrl,
+                        );
                         if (!deleted) {
-                            console.warn("Aviso: Não foi possível deletar a imagem do storage.");
+                            console.warn(
+                                "Aviso: Não foi possível deletar a imagem do storage.",
+                            );
                         }
                     }
 
                     // 2. Deletar registro do banco via API
-                    const response = await fetch(`/api/v1/catalogos/${service.ID}`, {
-                        method: "DELETE",
-                    });
+                    const response = await fetch(
+                        `/api/v1/catalogos/${service.ID}`,
+                        {
+                            method: "DELETE",
+                        },
+                    );
 
                     if (response.ok) {
                         // 3. Atualizar UI
@@ -289,13 +325,21 @@
                         // showAlert("Sucesso", "Serviço excluído com sucesso!", "success");
                     } else {
                         const text = await response.text();
-                        showAlert("Erro", `Erro ao excluir serviço: ${text}`, "error");
+                        showAlert(
+                            "Erro",
+                            `Erro ao excluir serviço: ${text}`,
+                            "error",
+                        );
                     }
                 } catch (err) {
                     console.error("Erro ao excluir:", err);
-                    showAlert("Erro", "Erro de conexão ao tentar excluir.", "error");
+                    showAlert(
+                        "Erro",
+                        "Erro de conexão ao tentar excluir.",
+                        "error",
+                    );
                 }
-            }
+            },
         );
     }
 
@@ -303,13 +347,13 @@
 </script>
 
 <div
-    class="font-body bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark antialiased h-screen flex overflow-hidden transition-colors duration-200"
+    class="font-body bg-[hsl(var(--bs-background))] text-text-light dark:text-text-dark antialiased h-screen flex overflow-hidden transition-colors duration-200"
 >
     <Sidebar />
 
     <main class="flex-1 flex flex-col h-full overflow-hidden relative">
         <header
-            class="h-16 bg-surface-light dark:bg-surface-dark flex items-center justify-between px-6 z-10"
+            class="h-16 bg-[hsl(var(--bs-card))] flex items-center justify-between px-6 z-10"
         >
             <div class="flex items-center flex-1 max-w-2xl">
                 <div class="relative w-full">
@@ -321,7 +365,7 @@
                         >
                     </span>
                     <input
-                        class="block w-full pl-10 pr-3 py-2 border border-border-light dark:border-border-dark rounded-md leading-5 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-colors"
+                        class="block w-full pl-10 pr-3 py-2 border border-border-light dark:border-border-dark rounded-md leading-5 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-colors"
                         placeholder="Pesquisar serviços..."
                         type="text"
                     />
@@ -389,7 +433,7 @@
                     </div>
                 {:else if services.length === 0}
                     <div
-                        class="bg-surface-light dark:bg-surface-dark rounded-lg border-2 border-dashed border-border-light dark:border-border-dark p-12 text-center text-gray-500 dark:text-gray-400"
+                        class="bg-[hsl(var(--bs-card))] rounded-lg border-2 border-dashed border-border-light dark:border-border-dark p-12 text-center text-gray-500 dark:text-gray-400"
                     >
                         <span class="material-icons text-5xl mb-4 opacity-20"
                             >inventory_2</span
@@ -407,7 +451,7 @@
                     >
                         {#each services as service}
                             <div
-                                class="bg-surface-light dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col relative"
+                                class="bg-[hsl(var(--bs-card))] rounded-2xl border border-border-light dark:border-border-dark overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col relative"
                             >
                                 <!-- Top Action Link (Image Area) -->
                                 <a
@@ -421,8 +465,8 @@
                                         class="h-48 overflow-hidden relative bg-gray-100 dark:bg-gray-800"
                                     >
                                         <img
-                                            src={imageTimestamps.has(service.ID) 
-                                                ? `${service.ImagemUrl}?t=${imageTimestamps.get(service.ID)}` 
+                                            src={imageTimestamps.has(service.ID)
+                                                ? `${service.ImagemUrl}?t=${imageTimestamps.get(service.ID)}`
                                                 : service.ImagemUrl}
                                             alt={service.Nome}
                                             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"

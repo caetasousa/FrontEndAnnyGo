@@ -17,7 +17,7 @@
         },
         {
             label: "Listagem de Prestadores",
-            href: "/prestadores",
+            href: "/prestadores/editar",
             icon: "group",
             category: "Prestadores",
         },
@@ -60,7 +60,7 @@
 </script>
 
 <aside
-    class="w-64 bg-surface-light dark:bg-surface-dark flex-col hidden md:flex h-full flex-shrink-0"
+    class="w-64 bg-[hsl(var(--bs-card))] flex-col hidden md:flex h-full flex-shrink-0"
 >
     <div class="h-16 flex items-center px-6">
         <span class="material-icons text-brand-orange text-3xl mr-2">spa</span>

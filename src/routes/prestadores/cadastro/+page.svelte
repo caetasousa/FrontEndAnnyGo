@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { goto } from "$app/navigation";
     import Sidebar from "$lib/components/Sidebar.svelte";
     import ThemeToggle from "$lib/components/ThemeToggle.svelte";
     import AlertModal from "$lib/components/AlertModal.svelte";
@@ -26,7 +27,7 @@
     let phone = "";
     let email = "";
     let selectedCatalogIds: string[] = [];
-    
+
     // Estado da imagem
     let selectedImage: File | null = null;
     let imagePreview: string | null = null;
@@ -37,7 +38,7 @@
     let page = 1;
     let limit = 12;
     let totalServices = 0;
-    
+
     // Estado de envio
     let isSubmitting = false;
 
@@ -47,11 +48,28 @@
         title: "",
         message: "",
         type: "info" as "success" | "error" | "warning" | "info",
-        onConfirm: () => { alertState.show = false; }
+        onConfirm: () => {
+            alertState.show = false;
+        },
     };
 
-    function showAlert(title: string, message: string, type: "success" | "error" | "warning" | "info" = "info", onConfirm?: () => void) {
-        alertState = { show: true, title, message, type, onConfirm: onConfirm || (() => { alertState.show = false; }) };
+    function showAlert(
+        title: string,
+        message: string,
+        type: "success" | "error" | "warning" | "info" = "info",
+        onConfirm?: () => void,
+    ) {
+        alertState = {
+            show: true,
+            title,
+            message,
+            type,
+            onConfirm:
+                onConfirm ||
+                (() => {
+                    alertState.show = false;
+                }),
+        };
     }
 
     async function fetchServices(reset = false) {
@@ -62,7 +80,9 @@
         }
 
         try {
-            const res = await fetch(`/api/v1/catalogos?page=${page}&limit=${limit}`);
+            const res = await fetch(
+                `/api/v1/catalogos?page=${page}&limit=${limit}`,
+            );
             if (res.ok) {
                 const data: CatalogResponse = await res.json();
                 if (reset) {
@@ -73,7 +93,11 @@
                 totalServices = data.total;
             } else {
                 console.error("Erro ao buscar serviços:", await res.text());
-                showAlert("Erro", "Falha ao carregar lista de serviços.", "error");
+                showAlert(
+                    "Erro",
+                    "Falha ao carregar lista de serviços.",
+                    "error",
+                );
             }
         } catch (error) {
             console.error(error);
@@ -91,18 +115,30 @@
     async function handleSubmit() {
         // Validação do Nome (min=3, max=100)
         if (!nome || nome.trim().length < 3) {
-            showAlert("Atenção", "O nome deve ter no mínimo 3 caracteres.", "warning");
+            showAlert(
+                "Atenção",
+                "O nome deve ter no mínimo 3 caracteres.",
+                "warning",
+            );
             return;
         }
         if (nome.trim().length > 100) {
-            showAlert("Atenção", "O nome deve ter no máximo 100 caracteres.", "warning");
+            showAlert(
+                "Atenção",
+                "O nome deve ter no máximo 100 caracteres.",
+                "warning",
+            );
             return;
         }
 
         // Validação do CPF (11 dígitos numéricos)
         const cpfDigits = cpf.replace(/\D/g, "");
         if (!cpfDigits || cpfDigits.length !== 11) {
-            showAlert("Atenção", "O CPF deve conter exatamente 11 dígitos.", "warning");
+            showAlert(
+                "Atenção",
+                "O CPF deve conter exatamente 11 dígitos.",
+                "warning",
+            );
             return;
         }
 
@@ -113,30 +149,50 @@
         }
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-            showAlert("Atenção", "Por favor, insira um email válido.", "warning");
+            showAlert(
+                "Atenção",
+                "Por favor, insira um email válido.",
+                "warning",
+            );
             return;
         }
 
         // Validação do Telefone (min=8, max=15 dígitos)
         const phoneDigits = phone.replace(/\D/g, "");
         if (!phoneDigits || phoneDigits.length < 8) {
-            showAlert("Atenção", "O telefone deve ter no mínimo 8 dígitos.", "warning");
+            showAlert(
+                "Atenção",
+                "O telefone deve ter no mínimo 8 dígitos.",
+                "warning",
+            );
             return;
         }
         if (phoneDigits.length > 15) {
-            showAlert("Atenção", "O telefone deve ter no máximo 15 dígitos.", "warning");
+            showAlert(
+                "Atenção",
+                "O telefone deve ter no máximo 15 dígitos.",
+                "warning",
+            );
             return;
         }
 
         // Validação da Foto
         if (!selectedImage) {
-            showAlert("Atenção", "Selecione uma foto para o prestador.", "warning");
+            showAlert(
+                "Atenção",
+                "Selecione uma foto para o prestador.",
+                "warning",
+            );
             return;
         }
 
         // Validação dos Serviços (pelo menos um)
         if (selectedCatalogIds.length === 0) {
-            showAlert("Atenção", "Selecione pelo menos um serviço para o prestador.", "warning");
+            showAlert(
+                "Atenção",
+                "Selecione pelo menos um serviço para o prestador.",
+                "warning",
+            );
             return;
         }
 
@@ -145,7 +201,8 @@
         // 1. Upload da imagem
         let imageUrl = "";
         try {
-            const uploadedUrl = await uploadPrestadorImageToSupabase(selectedImage);
+            const uploadedUrl =
+                await uploadPrestadorImageToSupabase(selectedImage);
             if (uploadedUrl) {
                 imageUrl = uploadedUrl;
             } else {
@@ -166,31 +223,64 @@
             cpf: cpfDigits,
             email: email.trim(),
             image_url: imageUrl,
+            foto: imageUrl, // Enviar também como 'foto' para garantir compatibilidade
             nome: nome.trim(),
-            telefone: phoneDigits
+            telefone: phoneDigits,
         };
+
+        console.log("Payload de cadastro:", payload);
 
         try {
             const res = await fetch("/api/v1/prestadores", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
             });
 
             if (res.ok) {
-                showAlert("Sucesso", "Prestador cadastrado com sucesso!", "success", () => {
-                   // Limpar formulário ou redirecionar
-                   resetForm();
-                });
+                const responseData = await res.json();
+                const newId = responseData.id || responseData.ID;
+
+                showAlert(
+                    "Sucesso",
+                    "Prestador cadastrado com sucesso!",
+                    "success",
+                    () => {
+                        if (newId) {
+                            goto(`/prestadores/${newId}`);
+                        } else {
+                            resetForm();
+                        }
+                    },
+                );
             } else {
                 const text = await res.text();
                 // Mensagem mais amigável para erro de CPF
                 let errorMessage = text;
-                if (text.toLowerCase().includes("cpf") || text.toLowerCase().includes("invalid")) {
-                    errorMessage = "CPF inválido. Por favor, verifique o número digitado.";
-                } else if (text.toLowerCase().includes("catalogo") || text.toLowerCase().includes("serviço")) {
-                    errorMessage = "O prestador deve ter pelo menos um serviço cadastrado.";
+                
+                // Tratamento de erro de duplicidade de email (segurança)
+                if (text.includes('duplicate key value violates unique constraint "uq_prestadores_email"')) {
+                     errorMessage = "Não foi possível realizar o cadastro. Verifique os dados informados.";
+                } else if (
+                    text.toLowerCase().includes("cpf") ||
+                    text.toLowerCase().includes("invalid")
+                ) {
+                    errorMessage =
+                        "CPF inválido. Por favor, verifique o número digitado.";
+                } else if (
+                    text.toLowerCase().includes("catalogo") ||
+                    text.toLowerCase().includes("serviço")
+                ) {
+                    errorMessage =
+                        "O prestador deve ter pelo menos um serviço cadastrado.";
                 }
+                
+                // Se ainda for a mensagem original e parecer erro técnico, mostra algo genérico se não for um dos casos acima
+                if (errorMessage === text && text.includes("error")) {
+                     // Opção: manter a mensagem técnica se não for de segurança, ou limpar todas.
+                     // Como o user pediu especificamente da constraint, mantemos assim.
+                }
+
                 showAlert("Erro", errorMessage, "error");
             }
         } catch (err) {
@@ -212,7 +302,9 @@
         window.scrollTo(0, 0);
     }
 
-    async function handleImageSelect(event: CustomEvent<{ file: File; preview: string }>) {
+    async function handleImageSelect(
+        event: CustomEvent<{ file: File; preview: string }>,
+    ) {
         const { file, preview } = event.detail;
         selectedImage = file;
         imagePreview = preview;
@@ -229,22 +321,27 @@
 </script>
 
 <div
-    class="font-body bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark antialiased h-screen flex overflow-hidden transition-colors duration-200"
+    class="font-body bg-[hsl(var(--bs-background))] text-text-light dark:text-text-dark antialiased h-screen flex overflow-hidden transition-colors duration-200"
 >
     <Sidebar />
     <main class="flex-1 flex flex-col h-full overflow-hidden relative">
         <header
-            class="h-16 bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark flex items-center justify-between px-6 z-10"
+            class="h-16 bg-[hsl(var(--bs-card))] border-b border-border-light dark:border-border-dark flex items-center justify-between px-6 z-10"
         >
             <div class="flex items-center flex-1 max-w-2xl">
                 <!-- Search bar (placeholder layout) -->
                 <div class="relative w-full opacity-50 pointer-events-none">
-                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center">
-                        <span class="material-symbols-outlined text-gray-400">search</span>
+                    <span
+                        class="absolute inset-y-0 left-0 pl-3 flex items-center"
+                    >
+                        <span class="material-symbols-outlined text-gray-400"
+                            >search</span
+                        >
                     </span>
                     <input
-                        class="block w-full pl-10 pr-3 py-2 border border-border-light dark:border-border-dark rounded-md bg-gray-50 dark:bg-gray-800 text-sm"
-                        placeholder="Pesquisar..." disabled
+                        class="block w-full pl-10 pr-3 py-2 border border-border-light dark:border-border-dark rounded-md bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-sm"
+                        placeholder="Pesquisar..."
+                        disabled
                     />
                 </div>
             </div>
@@ -283,7 +380,7 @@
                 </div>
 
                 <div
-                    class="bg-surface-light dark:bg-surface-dark rounded-lg shadow-sm border border-border-light dark:border-border-dark overflow-hidden"
+                    class="bg-[hsl(var(--bs-card))] rounded-lg shadow-sm border border-border-light dark:border-border-dark overflow-hidden"
                 >
                     <div class="p-6 md:p-8 space-y-8">
                         <div>
@@ -304,7 +401,7 @@
                                     >
                                     <input
                                         bind:value={nome}
-                                        class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
+                                        class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
                                         id="name"
                                         placeholder="Ex: Ana Maria Costa"
                                         type="text"
@@ -317,7 +414,7 @@
                                     >
                                     <input
                                         bind:value={cpf}
-                                        class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
+                                        class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
                                         id="cpf"
                                         placeholder="000.000.000-00"
                                         type="text"
@@ -330,7 +427,7 @@
                                     >
                                     <input
                                         bind:value={phone}
-                                        class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
+                                        class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
                                         id="phone"
                                         placeholder="(00) 00000-0000"
                                         type="tel"
@@ -352,7 +449,7 @@
                                         </div>
                                         <input
                                             bind:value={email}
-                                            class="block w-full pl-10 rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
+                                        class="block w-full pl-10 rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
                                             id="email"
                                             placeholder="prestador@bellavita.com"
                                             type="email"
@@ -362,7 +459,9 @@
                                 <div class="col-span-1 md:col-span-2">
                                     <div
                                         class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                                    >Foto do Prestador</div>
+                                    >
+                                        Foto do Prestador
+                                    </div>
                                     <ImageUpload
                                         previewUrl={imagePreview}
                                         on:select={handleImageSelect}
@@ -392,21 +491,27 @@
                                 Selecione todos os serviços que este
                                 profissional está qualificado para realizar.
                             </p>
-                            
+
                             <!-- Services Grid -->
                             <div
                                 class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
                             >
                                 {#if loadingServices && services.length === 0}
-                                    <div class="col-span-full py-8 text-center text-gray-500">
+                                    <div
+                                        class="col-span-full py-8 text-center text-gray-500"
+                                    >
                                         Carregando serviços...
                                     </div>
                                 {:else}
                                     {#each services as service}
                                         <label
                                             class="relative flex items-start p-4 rounded-lg border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-all group"
-                                            class:border-primary={selectedCatalogIds.includes(service.ID)}
-                                            class:bg-primary-50={selectedCatalogIds.includes(service.ID)}
+                                            class:border-primary={selectedCatalogIds.includes(
+                                                service.ID,
+                                            )}
+                                            class:bg-primary-50={selectedCatalogIds.includes(
+                                                service.ID,
+                                            )}
                                         >
                                             <div class="min-w-0 flex-1 text-sm">
                                                 <div
@@ -417,26 +522,31 @@
                                                 <p
                                                     class="text-gray-500 dark:text-gray-400 text-xs mt-1"
                                                 >
-                                                    {service.DuracaoPadrao} min • {service.Categoria}
+                                                    {service.DuracaoPadrao} min •
+                                                    {service.Categoria}
                                                 </p>
                                             </div>
-                                            <div class="ml-3 flex items-center h-5">
+                                            <div
+                                                class="ml-3 flex items-center h-5"
+                                            >
                                                 <input
                                                     class="h-5 w-5 text-input-focus border-gray-300 rounded focus:ring-input-focus dark:bg-gray-700 dark:border-gray-600"
                                                     type="checkbox"
                                                     value={service.ID}
-                                                    bind:group={selectedCatalogIds}
+                                                    bind:group={
+                                                        selectedCatalogIds
+                                                    }
                                                 />
                                             </div>
                                         </label>
                                     {/each}
                                 {/if}
                             </div>
-                            
+
                             <!-- Load More -->
                             {#if services.length < totalServices}
                                 <div class="mt-4 text-center">
-                                    <button 
+                                    <button
                                         type="button"
                                         on:click={loadMore}
                                         class="text-sm text-primary hover:underline hover:text-primary-hover font-medium"
@@ -445,7 +555,6 @@
                                     </button>
                                 </div>
                             {/if}
-
                         </div>
                     </div>
                     <div
@@ -465,10 +574,16 @@
                             class="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-md font-medium shadow-md transition-colors flex items-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
                         >
                             {#if isSubmitting}
-                                <span class="material-symbols-outlined animate-spin mr-2 text-[20px]">sync</span>
+                                <span
+                                    class="material-symbols-outlined animate-spin mr-2 text-[20px]"
+                                    >sync</span
+                                >
                                 Salvando...
                             {:else}
-                                <span class="material-symbols-outlined text-[20px] mr-2">save</span>
+                                <span
+                                    class="material-symbols-outlined text-[20px] mr-2"
+                                    >save</span
+                                >
                                 Salvar Prestador
                             {/if}
                         </button>
@@ -521,7 +636,7 @@
     message={alertState.message}
     type={alertState.type}
     on:confirm={alertState.onConfirm}
-    on:cancel={() => alertState.show = false}
+    on:cancel={() => (alertState.show = false)}
 />
 
 <style>

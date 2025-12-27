@@ -157,13 +157,13 @@
 </script>
 
 <div
-    class="bg-background-light dark:bg-background-dark text-gray-800 dark:text-gray-200 font-sans antialiased transition-colors duration-200"
+    class="bg-[hsl(var(--bs-background))] text-gray-800 dark:text-gray-200 font-sans antialiased transition-colors duration-200"
 >
     <div class="flex h-screen overflow-hidden">
         <Sidebar />
         <main class="flex-1 flex flex-col h-full overflow-hidden relative">
             <header
-                class="h-16 bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark flex items-center justify-between px-6 flex-shrink-0 z-10"
+                class="h-16 bg-[hsl(var(--bs-card))] border-b border-border-light dark:border-border-dark flex items-center justify-between px-6 flex-shrink-0 z-10"
             >
                 <div class="flex items-center flex-1 max-w-2xl gap-4">
                     <div class="relative w-full">
@@ -174,7 +174,7 @@
                             ></span>
                         </div>
                         <input
-                            class="block w-full pl-10 pr-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 border-transparent focus:border-primary focus:bg-white dark:focus:bg-gray-700 text-sm text-gray-900 dark:text-white focus:ring-0 placeholder-gray-500 dark:placeholder-gray-400 transition-colors"
+                            class="block w-full pl-10 pr-4 py-2 rounded-lg bg-gray-100 dark:bg-[hsl(var(--bs-muted))]/20 border-transparent focus:border-primary focus:bg-white dark:focus:bg-gray-700 text-sm text-gray-900 dark:text-white focus:ring-0 placeholder-gray-500 dark:placeholder-gray-400 transition-colors"
                             placeholder="Busque por serviço, profissional ou categoria..."
                             type="text"
                         />
@@ -278,7 +278,7 @@
                             class="whitespace-nowrap px-4 py-2 {selectedCategory ===
                             category
                                 ? 'bg-primary text-white shadow-md shadow-primary/30'
-                                : 'bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'} text-sm font-medium rounded-full transition-colors"
+                                : 'bg-[hsl(var(--bs-card))] border border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'} text-sm font-medium rounded-full transition-colors"
                         >
                             {category}
                         </button>
@@ -321,7 +321,7 @@
                         >
                             {#each featuredServices as service}
                                 <div
-                                    class="group bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col"
+                                    class="group bg-[hsl(var(--bs-card))] rounded-xl border border-border-light dark:border-border-dark overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col"
                                 >
                                     <div class="relative h-48 overflow-hidden">
                                         {#if service.ImagemUrl}
@@ -426,7 +426,7 @@
                         </div>
                     {:else}
                         <div
-                            class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark divide-y divide-border-light dark:divide-border-dark"
+                            class="bg-[hsl(var(--bs-card))] rounded-xl border border-border-light dark:border-border-dark divide-y divide-border-light dark:divide-border-dark"
                         >
                             {#each filteredServices as service}
                                 <div

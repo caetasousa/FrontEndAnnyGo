@@ -248,12 +248,12 @@
 </script>
 
 <div
-  class="font-body bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark antialiased h-screen flex overflow-hidden transition-colors duration-200"
+  class="font-body bg-[hsl(var(--bs-background))] text-text-light dark:text-text-dark antialiased h-screen flex overflow-hidden transition-colors duration-200"
 >
   <Sidebar />
   <main class="flex-1 flex flex-col h-full overflow-hidden relative">
     <header
-      class="h-16 bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark flex items-center justify-between px-6 z-10"
+      class="h-16 bg-[hsl(var(--bs-card))] border-b border-border-light dark:border-border-dark flex items-center justify-between px-6 z-10"
     >
       <div class="flex items-center flex-1 max-w-2xl">
         <div class="relative w-full">
@@ -263,7 +263,7 @@
             <span class="material-symbols-outlined text-gray-400">search</span>
           </span>
           <input
-            class="block w-full pl-10 pr-3 py-2 border border-border-light dark:border-border-dark rounded-md leading-5 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-colors"
+            class="block w-full pl-10 pr-3 py-2 border border-border-light dark:border-border-dark rounded-md leading-5 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-colors"
             placeholder="Pesquisar no catálogo de serviços..."
             type="text"
           />
@@ -303,7 +303,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div class="lg:col-span-2 space-y-6">
             <form
-              class="bg-surface-light dark:bg-surface-dark rounded-lg shadow-sm border border-border-light dark:border-border-dark p-6 md:p-8"
+              class="bg-[hsl(var(--bs-card))] rounded-lg shadow-sm border border-border-light dark:border-border-dark p-6 md:p-8"
               on:submit={handleSubmit}
             >
               <div class="space-y-6">
@@ -317,7 +317,7 @@
                   <input
                     class="block w-full rounded-md {errors.nome
                       ? 'border-red-500'
-                      : 'border-border-light dark:border-border-dark'} bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3 transition-colors"
+                      : 'border-border-light dark:border-border-dark'} bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3 transition-colors"
                     id="service-name"
                     name="service-name"
                     placeholder="Ex: Corte Feminino, Manicure Completa, Hidratação Profunda"
@@ -340,22 +340,30 @@
                         Categoria
                       </label>
                       <select
-                        class="block w-full rounded-md border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3 transition-colors"
+                        class="block w-full rounded-md border-border-light dark:border-border-dark bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3 transition-colors"
                         id="category"
                         name="category"
                         bind:value={categoria}
                         required
                       >
-                        <option value="">Selecione uma categoria</option>
+                        <option
+                          value=""
+                          class="bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                          >Selecione uma categoria</option
+                        >
                         {#each categories as cat}
-                          <option value={cat}>{cat}</option>
+                          <option
+                            value={cat}
+                            class="bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                            >{cat}</option
+                          >
                         {/each}
                       </select>
                     </div>
                     <button
                       on:click={openCategoryModal}
                       type="button"
-                      class="h-[42px] w-[42px] flex items-center justify-center border border-border-light dark:border-border-dark rounded-md bg-gray-50 dark:bg-gray-800 text-gray-500 hover:text-brand-orange hover:bg-brand-orange/5 hover:border-brand-orange transition-all duration-200 group active:scale-95 shadow-sm"
+                      class="h-[42px] w-[42px] flex items-center justify-center border border-border-light dark:border-border-dark rounded-md bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-500 hover:text-brand-orange hover:bg-brand-orange/5 hover:border-brand-orange transition-all duration-200 group active:scale-95 shadow-sm"
                       title="Nova Categoria"
                     >
                       <span
@@ -375,7 +383,7 @@
                       <input
                         class="block w-full rounded-md {errors.duracao
                           ? 'border-red-500'
-                          : 'border-border-light dark:border-border-dark'} bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3 pr-12 transition-colors"
+                          : 'border-border-light dark:border-border-dark'} bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3 pr-12 transition-colors"
                         id="duration"
                         name="duration"
                         placeholder="60"
@@ -425,7 +433,7 @@
                       <input
                         class="block w-full rounded-md {errors.preco
                           ? 'border-red-500'
-                          : 'border-border-light dark:border-border-dark'} bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3 pl-10 transition-colors"
+                          : 'border-border-light dark:border-border-dark'} bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3 pl-10 transition-colors"
                         id="price"
                         name="price"
                         placeholder="0.00"
@@ -447,7 +455,7 @@
                     Descrição
                   </label>
                   <textarea
-                    class="block w-full rounded-md border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3 transition-colors"
+                    class="block w-full rounded-md border-border-light dark:border-border-dark bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 px-3 transition-colors"
                     id="description"
                     name="description"
                     placeholder="Descreva os detalhes do serviço, técnicas utilizadas, benefícios, produtos aplicados..."
@@ -495,7 +503,7 @@
           </div>
           <div class="lg:col-span-1 space-y-6">
             <div
-              class="bg-surface-light dark:bg-surface-dark rounded-lg shadow-sm border border-border-light dark:border-border-dark p-6"
+              class="bg-[hsl(var(--bs-card))] rounded-lg shadow-sm border border-border-light dark:border-border-dark p-6"
             >
               <h3 class="font-semibold text-gray-900 dark:text-white mb-4">
                 Imagem de Capa

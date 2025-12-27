@@ -72,13 +72,13 @@
 </script>
 
 <div
-    class="font-body bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark antialiased h-screen flex overflow-hidden transition-colors duration-200"
+    class="font-body bg-[hsl(var(--bs-background))] text-text-light dark:text-text-dark antialiased h-screen flex overflow-hidden transition-colors duration-200"
 >
     <Sidebar />
 
     <main class="flex-1 flex flex-col h-full overflow-hidden relative">
         <header
-            class="h-16 bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark flex items-center justify-between px-6 z-10"
+            class="h-16 bg-[hsl(var(--bs-card))] border-b border-border-light dark:border-border-dark flex items-center justify-between px-6 z-10"
         >
             <div class="flex items-center">
                 <a
@@ -131,7 +131,7 @@
 
                     <!-- Service Hero Card -->
                     <div
-                        class="bg-surface-light dark:bg-surface-dark rounded-3xl shadow-xl border border-border-light dark:border-border-dark overflow-hidden transition-all duration-300"
+                        class="bg-[hsl(var(--bs-card))] rounded-3xl shadow-xl border border-border-light dark:border-border-dark overflow-hidden transition-all duration-300"
                     >
                         <div
                             class="relative h-64 sm:h-80 bg-gray-200 dark:bg-gray-800"
@@ -221,7 +221,7 @@
                                 <!-- Detail Sidebar -->
                                 <div class="space-y-6">
                                     <div
-                                        class="bg-gray-50 dark:bg-gray-800/40 rounded-3xl p-6 border border-border-light dark:border-border-dark shadow-inner"
+                                        class="bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 rounded-3xl p-6 border border-border-light dark:border-border-dark shadow-inner"
                                     >
                                         <h4
                                             class="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-6"
@@ -232,7 +232,7 @@
                                             <!-- Categoria -->
                                             <div class="flex items-start gap-4">
                                                 <div
-                                                    class="h-10 w-10 rounded-xl bg-white dark:bg-gray-800 flex items-center justify-center text-brand-orange shadow-sm border border-border-light/50 dark:border-border-dark/50"
+                                                    class="h-10 w-10 rounded-xl bg-white dark:bg-[hsl(var(--bs-card))] flex items-center justify-center text-brand-orange shadow-sm border border-border-light/50 dark:border-border-dark/50"
                                                 >
                                                     <span
                                                         class="material-symbols-outlined text-[22px]"

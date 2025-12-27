@@ -4,12 +4,12 @@
 </script>
 
 <div
-    class="font-body bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark antialiased h-screen flex overflow-hidden transition-colors duration-200"
+    class="font-body bg-[hsl(var(--bs-background))] text-text-light dark:text-text-dark antialiased h-screen flex overflow-hidden transition-colors duration-200"
 >
     <Sidebar />
     <main class="flex-1 flex flex-col h-full overflow-hidden relative">
         <header
-            class="h-16 bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark flex items-center justify-between px-6 z-10"
+            class="h-16 bg-[hsl(var(--bs-card))] border-b border-border-light dark:border-border-dark flex items-center justify-between px-6 z-10"
         >
             <div class="flex items-center flex-1 max-w-2xl">
                 <div class="relative w-full">
@@ -21,7 +21,7 @@
                         >
                     </span>
                     <input
-                        class="block w-full pl-10 pr-3 py-2 border border-border-light dark:border-border-dark rounded-md leading-5 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-input-focus focus:border-input-focus sm:text-sm transition-all"
+                        class="block w-full pl-10 pr-3 py-2 border border-border-light dark:border-border-dark rounded-md leading-5 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-input-focus focus:border-input-focus sm:text-sm transition-all"
                         placeholder="Pesquisar agendamentos..."
                         type="text"
                     />
@@ -72,7 +72,7 @@
                     </div>
                 </div>
                 <div
-                    class="bg-surface-light dark:bg-surface-dark rounded-lg shadow-sm border border-border-light dark:border-border-dark overflow-hidden"
+                    class="bg-[hsl(var(--bs-card))] rounded-lg shadow-sm border border-border-light dark:border-border-dark overflow-hidden"
                 >
                     <div class="relative h-32 bg-primary">
                         <div class="absolute -bottom-10 left-8">
@@ -112,7 +112,7 @@
                                         for="name">Nome Completo</label
                                     >
                                     <input
-                                        class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
+                                        class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
                                         id="name"
                                         placeholder="Ex: Ana Maria Costa"
                                         type="text"
@@ -125,7 +125,7 @@
                                         for="cpf">CPF</label
                                     >
                                     <input
-                                        class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
+                                        class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
                                         id="cpf"
                                         placeholder="000.000.000-00"
                                         type="text"
@@ -138,7 +138,7 @@
                                         for="phone">Telefone / WhatsApp</label
                                     >
                                     <input
-                                        class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
+                                        class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
                                         id="phone"
                                         placeholder="(00) 00000-0000"
                                         type="tel"
@@ -160,7 +160,7 @@
                                             >
                                         </div>
                                         <input
-                                            class="block w-full pl-10 rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
+                                            class="block w-full pl-10 rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
                                             id="email"
                                             placeholder="prestador@bellavita.com"
                                             type="email"
@@ -174,7 +174,7 @@
                                         for="bio">Biografia</label
                                     >
                                     <textarea
-                                        class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
+                                        class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
                                         id="bio"
                                         placeholder="Fale um pouco sobre sua experiência..."
                                         rows="3"
@@ -215,7 +215,7 @@
                                 class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
                             >
                                 <div
-                                    class="relative flex items-start p-4 rounded-lg border border-primary/30 bg-orange-50 dark:bg-orange-900/10 dark:border-primary/20 transition-all"
+                                    class="relative flex items-start p-4 rounded-lg border border-primary/30 bg-orange-50 dark:bg-[hsl(var(--bs-muted))]/20 dark:border-primary/20 transition-all"
                                 >
                                     <div class="min-w-0 flex-1 text-sm">
                                         <div
@@ -240,7 +240,7 @@
                                     </div>
                                 </div>
                                 <div
-                                    class="relative flex items-start p-4 rounded-lg border border-primary/30 bg-orange-50 dark:bg-orange-900/10 dark:border-primary/20 transition-all"
+                                    class="relative flex items-start p-4 rounded-lg border border-primary/30 bg-orange-50 dark:bg-[hsl(var(--bs-muted))]/20 dark:border-primary/20 transition-all"
                                 >
                                     <div class="min-w-0 flex-1 text-sm">
                                         <div
@@ -265,7 +265,7 @@
                                     </div>
                                 </div>
                                 <div
-                                    class="relative flex items-start p-4 rounded-lg border border-primary/30 bg-orange-50 dark:bg-orange-900/10 dark:border-primary/20 transition-all"
+                                    class="relative flex items-start p-4 rounded-lg border border-primary/30 bg-orange-50 dark:bg-[hsl(var(--bs-muted))]/20 dark:border-primary/20 transition-all"
                                 >
                                     <div class="min-w-0 flex-1 text-sm">
                                         <div
@@ -313,7 +313,7 @@
                                     </h4>
                                     <div class="space-y-3">
                                         <div
-                                            class="flex items-center justify-between text-sm p-3 bg-gray-50 dark:bg-gray-800/50 rounded-md"
+                                            class="flex items-center justify-between text-sm p-3 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 rounded-md"
                                         >
                                             <span
                                                 class="font-medium text-gray-900 dark:text-white w-24"
@@ -328,7 +328,7 @@
                                             ></div>
                                         </div>
                                         <div
-                                            class="flex items-center justify-between text-sm p-3 bg-gray-50 dark:bg-gray-800/50 rounded-md"
+                                            class="flex items-center justify-between text-sm p-3 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 rounded-md"
                                         >
                                             <span
                                                 class="font-medium text-gray-900 dark:text-white w-24"
@@ -343,7 +343,7 @@
                                             ></div>
                                         </div>
                                         <div
-                                            class="flex items-center justify-between text-sm p-3 bg-gray-50 dark:bg-gray-800/50 rounded-md"
+                                            class="flex items-center justify-between text-sm p-3 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 rounded-md"
                                         >
                                             <span
                                                 class="font-medium text-gray-900 dark:text-white w-24"
@@ -358,7 +358,7 @@
                                             ></div>
                                         </div>
                                         <div
-                                            class="flex items-center justify-between text-sm p-3 bg-gray-50 dark:bg-gray-800/50 rounded-md"
+                                            class="flex items-center justify-between text-sm p-3 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 rounded-md"
                                         >
                                             <span
                                                 class="font-medium text-gray-900 dark:text-white w-24"
@@ -373,7 +373,7 @@
                                             ></div>
                                         </div>
                                         <div
-                                            class="flex items-center justify-between text-sm p-3 bg-gray-50 dark:bg-gray-800/50 rounded-md"
+                                            class="flex items-center justify-between text-sm p-3 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 rounded-md"
                                         >
                                             <span
                                                 class="font-medium text-gray-900 dark:text-white w-24"
@@ -388,7 +388,7 @@
                                             ></div>
                                         </div>
                                         <div
-                                            class="flex items-center justify-between text-sm p-3 bg-gray-50 dark:bg-gray-800/50 rounded-md opacity-75"
+                                            class="flex items-center justify-between text-sm p-3 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 rounded-md opacity-75"
                                         >
                                             <span
                                                 class="font-medium text-gray-900 dark:text-white w-24"
@@ -403,7 +403,7 @@
                                             ></div>
                                         </div>
                                         <div
-                                            class="flex items-center justify-between text-sm p-3 bg-gray-50 dark:bg-gray-800/50 rounded-md opacity-50"
+                                            class="flex items-center justify-between text-sm p-3 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 rounded-md opacity-50"
                                         >
                                             <span
                                                 class="font-medium text-gray-900 dark:text-white w-24"
@@ -426,7 +426,7 @@
                                         Próximas Ausências
                                     </h4>
                                     <div
-                                        class="border border-border-light dark:border-border-dark rounded-lg p-4 bg-gray-50 dark:bg-gray-800/30"
+                                        class="border border-border-light dark:border-border-dark rounded-lg p-4 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20"
                                     >
                                         <div class="flex items-start">
                                             <span
@@ -486,7 +486,7 @@
                                 </button>
                             </div>
                             <div
-                                class="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg p-6"
+                                class="bg-[hsl(var(--bs-card))] border border-border-light dark:border-border-dark rounded-lg p-6"
                             >
                                 <h4
                                     class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4"
@@ -504,7 +504,7 @@
                                         >
                                         <select
                                             id="day-of-week"
-                                            class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
+                                            class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
                                         >
                                             <option>Segunda-feira</option>
                                             <option>Terça-feira</option>
@@ -522,7 +522,7 @@
                                         >
                                         <input
                                             id="start-time"
-                                            class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
+                                            class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
                                             type="time"
                                             value="09:00"
                                         />
@@ -534,7 +534,7 @@
                                         >
                                         <input
                                             id="end-time"
-                                            class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
+                                            class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors"
                                             type="time"
                                             value="18:00"
                                         />
@@ -551,7 +551,7 @@
                                             <input
                                                 id="break-start"
                                                 aria-label="Início do intervalo"
-                                                class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors text-xs"
+                                                class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors text-xs"
                                                 placeholder="12:00"
                                                 type="time"
                                             />
@@ -559,7 +559,7 @@
                                             <input
                                                 id="break-end"
                                                 aria-label="Fim do intervalo"
-                                                class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors text-xs"
+                                                class="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-white shadow-sm focus:border-input-focus focus:ring-input-focus sm:text-sm py-2.5 transition-colors text-xs"
                                                 placeholder="13:00"
                                                 type="time"
                                             />
@@ -581,7 +581,7 @@
                         </div>
                     </div>
                     <div
-                        class="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-border-light dark:border-border-dark flex items-center justify-end space-x-3"
+                        class="px-6 py-4 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 border-t border-border-light dark:border-border-dark flex items-center justify-end space-x-3"
                     >
                         <button
                             class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 font-medium hover:bg-white dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
