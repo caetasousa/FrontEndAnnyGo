@@ -5,7 +5,8 @@
     export let show = false;
     export let title = "Atenção";
     export let message = "";
-    export let type: "success" | "error" | "warning" | "info" = "info";
+    export let type: "success" | "error" | "warning" | "info" | "primary" =
+        "info";
     export let confirmText = "Confirmar";
     export let cancelText = "Cancelar";
     export let showCancel = false;
@@ -28,7 +29,7 @@
             ? "text-red-500"
             : type === "success"
               ? "text-green-500"
-              : type === "warning"
+              : type === "warning" || type === "primary"
                 ? "text-brand-orange"
                 : "text-blue-500";
 
@@ -39,14 +40,16 @@
               ? "check_circle"
               : type === "warning"
                 ? "warning"
-                : "info";
+                : type === "primary"
+                  ? "check_circle"
+                  : "info";
 
     $: confirmBtnClass =
         type === "error"
             ? "bg-red-500 hover:bg-red-600 focus:ring-red-500"
             : type === "success"
               ? "bg-green-500 hover:bg-green-600 focus:ring-green-500"
-              : type === "warning"
+              : type === "warning" || type === "primary"
                 ? "bg-brand-orange hover:bg-brand-orange-hover focus:ring-brand-orange"
                 : "bg-blue-500 hover:bg-blue-600 focus:ring-blue-500";
 </script>

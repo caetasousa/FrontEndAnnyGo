@@ -44,7 +44,7 @@
   let totalPages = 1; // Track total pages
 
   let searchQuery = "";
-  let statusFilter: "todos" | "ativos" | "inativos" = "todos";
+  let statusFilter: "ativos" | "inativos" = "ativos";
 
   // --- Modal Editing State ---
   let showEditModal = false;
@@ -66,7 +66,8 @@
   async function fetchProviders() {
     loadingProviders = true;
     try {
-        const res = await fetch(`/api/v1/prestadores?page=${page}&limit=${limit}`);
+        const ativoParam = statusFilter === 'ativos';
+        const res = await fetch(`/api/v1/prestadores?page=${page}&limit=${limit}&ativo=${ativoParam}`);
         if (res.ok) {
             const data = await res.json();
             // Map API data to our Provider interface
@@ -278,6 +279,12 @@
           fetchProviders();
       }
   }
+  
+  function changeFilter(newFilter: "ativos" | "inativos") {
+      statusFilter = newFilter;
+      page = 1;
+      fetchProviders();
+  }
 
   // --- Alert Modal State ---
   let alertState = {
@@ -334,10 +341,8 @@
              });
 
              if (res.ok) {
-                 // Update local state optimistic logic
-                 providers = providers.map(p => 
-                    p.id === provider.id ? { ...p, ativo: !p.ativo } : p
-                 );
+                 // Refresh list to adhere to new filter
+                 fetchProviders();
                  const successTerm = provider.ativo ? "Inativado" : "Ativado";
                  showAlert("Sucesso", `Prestador ${successTerm} com sucesso!`, "success");
              } else {
@@ -352,19 +357,6 @@
       },
     );
   }
-
-  $: filteredProviders = providers.filter((p) => {
-    const matchesSearch =
-      p.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.especialidade && p.especialidade.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    const matchesStatus =
-      statusFilter === "todos" ||
-      (statusFilter === "ativos" && p.ativo) ||
-      (statusFilter === "inativos" && !p.ativo);
-
-    return matchesSearch && matchesStatus;
-  });
 </script>
 
 <div
@@ -426,16 +418,7 @@
                 class="flex items-center space-x-1 bg-gray-100 dark:bg-[hsl(var(--bs-muted))]/20 p-1 rounded-xl"
               >
                 <button
-                  on:click={() => (statusFilter = "todos")}
-                  class="px-4 py-1.5 text-sm font-semibold rounded-lg transition-all {statusFilter ===
-                  'todos'
-                    ? 'bg-white dark:bg-gray-700 shadow-md text-brand-orange'
-                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}"
-                >
-                  Todos
-                </button>
-                <button
-                  on:click={() => (statusFilter = "ativos")}
+                  on:click={() => changeFilter("ativos")}
                   class="px-4 py-1.5 text-sm font-semibold rounded-lg transition-all {statusFilter ===
                   'ativos'
                     ? 'bg-white dark:bg-gray-700 shadow-md text-brand-orange'
@@ -444,7 +427,7 @@
                   Ativos
                 </button>
                 <button
-                  on:click={() => (statusFilter = "inativos")}
+                  on:click={() => changeFilter("inativos")}
                   class="px-4 py-1.5 text-sm font-semibold rounded-lg transition-all {statusFilter ===
                   'inativos'
                     ? 'bg-white dark:bg-gray-700 shadow-md text-brand-orange'
@@ -472,7 +455,7 @@
                  <span class="material-symbols-outlined animate-spin text-4xl text-primary">sync</span>
                  <span class="ml-2 text-gray-500 dark:text-gray-400">Carregando profissionais...</span>
             </div>
-        {:else if filteredProviders.length === 0}
+        {:else if providers.length === 0}
           <div
             class="bg-[hsl(var(--bs-card))] rounded-xl border-2 border-dashed border-border-light dark:border-border-dark p-12 text-center"
           >
@@ -485,7 +468,7 @@
           </div>
         {:else}
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {#each filteredProviders as provider}
+            {#each providers as provider}
               <div
                 class="bg-[hsl(var(--bs-card))] rounded-xl border border-border-light dark:border-border-dark overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col"
               >
