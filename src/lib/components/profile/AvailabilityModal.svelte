@@ -1,6 +1,6 @@
 <script lang="ts">
-    import Modal from "./Modal.svelte";
-    import AlertModal from "./AlertModal.svelte";
+    import Modal from "$lib/components/Modal.svelte";
+    import AlertModal from "$lib/components/AlertModal.svelte";
     import { createEventDispatcher } from "svelte";
 
     export let show = false;
@@ -13,19 +13,19 @@
     // State
     let date = new Date().toISOString().split("T")[0]; // Default to today
     let intervals: { start: string; end: string }[] = [
-        { start: "08:00", end: "14:00" },
+        { start: "08:00", end: "12:00" },
     ];
-    
+
     // Update date and intervals when modal opens with initial data
     $: if (show) {
         if (initialDate) {
             date = initialDate;
         }
         if (initialIntervals && initialIntervals.length > 0) {
-            intervals = initialIntervals.map(i => ({ ...i })); // Clone to avoid mutation
+            intervals = initialIntervals.map((i) => ({ ...i })); // Clone to avoid mutation
         } else {
-             // Reset to default if no initial intervals provided (for new entries)
-             intervals = [{ start: "08:00", end: "14:00" }];
+            // Reset to default if no initial intervals provided (for new entries)
+            intervals = [{ start: "08:00", end: "12:00" }];
         }
     }
 
@@ -37,12 +37,12 @@
     // Validation
     function validate() {
         if (!date) return "Selecione uma data.";
-        
+
         const selectedDate = new Date(date);
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Reset time for comparison
         // Fix timezone issue by treating input date as local
-        const [year, month, day] = date.split('-').map(Number);
+        const [year, month, day] = date.split("-").map(Number);
         const dateObj = new Date(year, month - 1, day);
 
         if (dateObj < today) {
@@ -70,17 +70,17 @@
     function addInterval() {
         let newStart = "";
         let newEnd = "";
-        
+
         // Smart defaults based on requirement
         if (intervals.length === 0) {
             newStart = "08:00";
-            newEnd = "14:00";
+            newEnd = "12:00";
         } else if (intervals.length === 1) {
-             newStart = "14:00";
-             newEnd = "18:00";
+            newStart = "14:00";
+            newEnd = "18:00";
         } else if (intervals.length === 2) {
-             newStart = "18:00";
-             newEnd = "22:00";
+            newStart = "19:00";
+            newEnd = "22:00";
         }
 
         intervals = [...intervals, { start: newStart, end: newEnd }];
@@ -100,7 +100,7 @@
     async function handleSubmit() {
         error = "";
         successMessage = "";
-        
+
         const validationError = validate();
         if (validationError) {
             error = validationError;
@@ -112,28 +112,34 @@
         try {
             const payload = {
                 data: date,
-                intervalos: intervals.map(i => ({
+                intervalos: intervals.map((i) => ({
                     hora_inicio: i.start,
-                    hora_fim: i.end
-                }))
+                    hora_fim: i.end,
+                })),
             };
 
             let response;
 
             if (intervals.length === 0) {
-                 // DELETE if no intervals
-                 response = await fetch(`/api/v1/prestadores/${providerId}/agenda?data=${date}`, {
-                    method: "DELETE",
-                });
+                // DELETE if no intervals
+                response = await fetch(
+                    `/api/v1/prestadores/${providerId}/agenda?data=${date}`,
+                    {
+                        method: "DELETE",
+                    },
+                );
             } else {
                 // PUT if updating/creating
-                response = await fetch(`/api/v1/prestadores/${providerId}/agenda`, {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
+                response = await fetch(
+                    `/api/v1/prestadores/${providerId}/agenda`,
+                    {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(payload),
                     },
-                    body: JSON.stringify(payload),
-                });
+                );
             }
 
             if (!response.ok) {
@@ -145,8 +151,7 @@
             setTimeout(() => {
                 close();
                 dispatch("success");
-            }, 1500);
-
+            }, 500);
         } catch (err: any) {
             console.error(err);
             error = err.message || "Erro de conexão.";
@@ -165,20 +170,23 @@
         successMessage = "";
 
         try {
-            const response = await fetch(`/api/v1/prestadores/${providerId}/agenda?data=${date}`, {
-                method: "DELETE",
-            });
+            const response = await fetch(
+                `/api/v1/prestadores/${providerId}/agenda?data=${date}`,
+                {
+                    method: "DELETE",
+                },
+            );
 
             if (!response.ok) {
-                 const text = await response.text();
-                 throw new Error(text || "Erro ao excluir disponibilidade.");
+                const text = await response.text();
+                throw new Error(text || "Erro ao excluir disponibilidade.");
             }
 
             successMessage = "Agenda excluída com sucesso!";
             setTimeout(() => {
                 close();
                 dispatch("success");
-            }, 1000);
+            }, 300);
         } catch (err: any) {
             console.error(err);
             error = err.message || "Erro ao excluir.";
@@ -188,7 +196,7 @@
     }
 </script>
 
-<AlertModal 
+<AlertModal
     bind:show={showDeleteConfirm}
     title="Excluir Agenda"
     message="Tem certeza que deseja remover todos os horários deste dia? Essa ação não pode ser desfeita."

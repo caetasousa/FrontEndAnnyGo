@@ -4,7 +4,7 @@
   import AlertModal from "$lib/components/AlertModal.svelte";
   import Modal from "$lib/components/Modal.svelte";
   import ImageUpload from "$lib/components/ImageUpload.svelte";
-  import { uploadPrestadorImageToSupabase } from "$lib/utils/imageUpload";
+  import { uploadPrestadorImageToSupabase, deleteImageFromSupabase } from "$lib/utils/imageUpload";
   import { onMount } from "svelte";
 
   // Updated Provider Interface to match API (ID as string)
@@ -255,6 +255,19 @@
 
         if (res.ok) {
             showAlert("Sucesso", "Prestador atualizado com sucesso!", "success", false, () => {
+                 // Check if we need to delete the old image
+                 // Only delete if a new image was uploaded (selectedImage exists)
+                 // AND there was an old image
+                 // AND the new URL is different from the old one (to avoid deleting just-uploaded same image)
+                 const oldImageUrl = editingProvider?.foto;
+                 if (selectedImage && oldImageUrl && oldImageUrl !== imageUrl) {
+                     console.log("Deleting old provider image:", oldImageUrl);
+                     // Fire and forget, don't await/block UI
+                     deleteImageFromSupabase(oldImageUrl).then(success => {
+                        if (!success) console.warn("Failed to delete old image in background");
+                     });
+                 }
+
                  alertState.show = false;
                  showEditModal = false;
                  fetchProviders(); // Refresh list to show changes

@@ -8,7 +8,7 @@
         category?: string;
     }
 
-    const items: NavItem[] = [
+    export let items: NavItem[] = [
         { label: "Início", href: "/", icon: "home" },
         {
             label: "Agenda do Prestador",
