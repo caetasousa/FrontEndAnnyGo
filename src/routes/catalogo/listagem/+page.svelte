@@ -292,19 +292,7 @@
             async () => {
                 // Lógica de exclusão executada ao confirmar
                 try {
-                    // 1. Deletar imagem do Supabase se existir
-                    if (service.ImagemUrl) {
-                        const deleted = await deleteImageFromSupabase(
-                            service.ImagemUrl,
-                        );
-                        if (!deleted) {
-                            console.warn(
-                                "Aviso: Não foi possível deletar a imagem do storage.",
-                            );
-                        }
-                    }
-
-                    // 2. Deletar registro do banco via API
+                    // 1. Deletar registro do banco via API PRIMEIRO
                     const response = await fetch(
                         `/api/v1/catalogos/${service.ID}`,
                         {
@@ -313,6 +301,18 @@
                     );
 
                     if (response.ok) {
+                        // 2. Deletar imagem do Supabase apenas se o registro no banco foi removido com sucesso
+                        if (service.ImagemUrl) {
+                            const deleted = await deleteImageFromSupabase(
+                                service.ImagemUrl,
+                            );
+                            if (!deleted) {
+                                console.warn(
+                                    "Aviso: Não foi possível deletar a imagem do storage.",
+                                );
+                            }
+                        }
+
                         // 3. Atualizar UI
                         services = services.filter((s) => s.ID !== service.ID);
                         totalItems--;
@@ -321,13 +321,20 @@
                             fetchServices();
                         }
                         alertState.show = false; // Fecha o modal de confirmação
-                        // Opcional: mostrar sucesso
-                        // showAlert("Sucesso", "Serviço excluído com sucesso!", "success");
                     } else {
-                        const text = await response.text();
+                        const errorData = await response.json().catch(() => ({}));
+                        const errorMessage = errorData.error || await response.text();
+
+                        let friendlyMessage = `Erro ao excluir serviço: ${errorMessage}`;
+                        
+                        // Tratamento específico para erro de infraestrutura (geralmente chave estrangeira)
+                        if (errorMessage.includes("falha na infraestrutura")) {
+                            friendlyMessage = "Este serviço não pode ser excluído porque está vinculado a profissionais ou agendamentos.";
+                        }
+
                         showAlert(
-                            "Erro",
-                            `Erro ao excluir serviço: ${text}`,
+                            "Erro ao Excluir",
+                            friendlyMessage,
                             "error",
                         );
                     }
