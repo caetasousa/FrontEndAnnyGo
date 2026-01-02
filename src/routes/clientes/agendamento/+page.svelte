@@ -11,7 +11,11 @@
     let services: any[] = [];
     let selectedProfessional: any = null;
     let selectedService: any = null; // Serviço principal selecionado (hardcoded first for now if list loaded)
+
+
     let preSelectedServiceId: string | null = null;
+    let fetchedAppointments: any[] = []; // Store explicitly fetched appointments
+    let fetchedClientAppointments: any[] = []; // Store client's existing appointments
 
     // Estado do Formulário
     let loading = true;
@@ -45,9 +49,13 @@
     }
 
     // Dynamic Slots
-    let morningSlots: string[] = [];
-    let afternoonSlots: string[] = [];
-    let eveningSlots: string[] = [];
+    interface Slot {
+        time: string;
+        disabled: boolean;
+    }
+    let morningSlots: Slot[] = [];
+    let afternoonSlots: Slot[] = [];
+    let eveningSlots: Slot[] = [];
     let selectedSlot = "";
 
     // --- State for theme ---
@@ -187,67 +195,111 @@
             let current = start;
             while (current + duracao <= end) {
                 allSlots.push(minutesToTime(current));
-                // We increment by a fixed step (e.g. 30 min) to allow starting at various points,
-                // OR we increment by duration if we want back-to-back only.
-                // Usually, 30 min steps are better for UX.
-                current += 30;
+                // We increment by a fixed step (e.g. 15 min) to allow starting at various points
+                current += 15;
             }
         });
 
-        // Fetch existing appointments for the day if they exist in the professional object
-        const appointments = selectedProfessional.Agendamentos || selectedProfessional.agendamentos || [];
-        const dayAppointments = appointments.filter((ap: any) => {
-            const apDate = (ap.DataHoraInicio || ap.data_hora_inicio || "").split("T")[0];
-            return apDate === dateStr;
+
+
+        // Filter valid appointments for the current day
+        const dayProviderAppointments = fetchedAppointments.filter((ap: any) => {
+             const dataInicio = ap.data_inicio || ap.DataInicio || ap.start_time || ap.StartTime || "";
+             return dataInicio.startsWith(dateStr);
         });
+
+        const dayClientAppointments = fetchedClientAppointments.filter((ap: any) => {
+             const dataInicio = ap.data_inicio || ap.DataInicio || ap.start_time || ap.StartTime || "";
+             return dataInicio.startsWith(dateStr);
+        });
+        
+        // Combine all appointments that effectively block the slot
+        // 1. Appointments of the provider (he is busy)
+        // 2. Appointments of the client (he is busy)
+        const allBlockers = [...dayProviderAppointments, ...dayClientAppointments];
 
         // Distribute slots with overlap check
         allSlots.forEach((slot) => {
             const slotStart = timeToMinutes(slot);
             const slotEnd = slotStart + duracao;
 
-            // Check overlap with existing appointments
-            const hasOverlap = dayAppointments.some((ap: any) => {
-                const apStartStr = (ap.DataHoraInicio || ap.data_hora_inicio || "").split("T")[1]?.substring(0, 5);
-                const apDuracao = ap.Duracao || ap.duracao || 60; // Default 60 if not specified
-                if (!apStartStr) return false;
+            // Check overlap with existing appointments (provider's OR client's)
+            const hasOverlap = allBlockers.some((ap: any) => {
+                let apStartMinutes = -1;
+                let apDuracaoMinutes = 60; 
 
-                const apStart = timeToMinutes(apStartStr);
-                const apEnd = apStart + apDuracao;
+                // 1. Tentar extrair Duração
+                apDuracaoMinutes = Number(
+                    ap.Duracao || ap.duracao || ap.DuracaoMinutos || ap.duracao_minutos ||
+                    ap.servico?.DuracaoPadrao || ap.servico?.duracao_padrao || ap.Servico?.DuracaoPadrao || 
+                     ap.servico?.duracao || ap.Servico?.Duracao ||
+                    60
+                );
 
-                // Overlap condition: start1 < end2 AND end1 > start2
-                return slotStart < apEnd && slotEnd > apStart;
+                // 2. Parse Start Time
+                const startStr = ap.data_inicio || ap.DataInicio || ap.start_time || ap.StartTime || "";
+                
+                if (startStr) {
+                    if (startStr.includes("T")) {
+                         // ISO format: YYYY-MM-DDTHH:MM:SS
+                         const timePart = startStr.split("T")[1]; // HH:MM:SS...
+                         if (timePart) {
+                             const [hh, mm] = timePart.split(":").map(Number);
+                             apStartMinutes = hh * 60 + mm;
+                         }
+                    } else if (startStr.includes(" ")) {
+                        // "YYYY-MM-DD HH:MM"
+                        const timePart = startStr.split(" ")[1];
+                        if (timePart) {
+                            const [hh, mm] = timePart.split(":").map(Number);
+                             apStartMinutes = hh * 60 + mm;
+                        }
+                    }
+                }
+                
+                // Keep backward compatibility/Fallback if new parsing failed
+                if (apStartMinutes === -1) {
+                    // Try old logic
+                     const isolatedTime = ap.HoraInicio || ap.hora_inicio || ap.Hora || ap.hora;
+                     if (isolatedTime) {
+                         apStartMinutes = timeToMinutes(isolatedTime);
+                     }
+                }
+
+                if (apStartMinutes === -1) return false;
+
+                const apEnd = apStartMinutes + apDuracaoMinutes;
+                return slotStart < apEnd && slotEnd > apStartMinutes;
             });
-
-            if (hasOverlap) return; // Skip this slot
 
             const hour = parseInt(slot.split(":")[0]);
             if (hour < 12) {
-                morningSlots.push(slot);
+                morningSlots.push({ time: slot, disabled: hasOverlap });
             } else if (hour < 18) {
-                afternoonSlots.push(slot);
+                afternoonSlots.push({ time: slot, disabled: hasOverlap });
             } else {
-                eveningSlots.push(slot);
+                eveningSlots.push({ time: slot, disabled: hasOverlap });
             }
         });
 
-        // If old slot is still available in any list, restore it
+        // If old slot is still available and NOT disabled, restore it
         if (
             oldSlot &&
-            [...morningSlots, ...afternoonSlots, ...eveningSlots].includes(
-                oldSlot,
+            [...morningSlots, ...afternoonSlots, ...eveningSlots].some(
+                (s) => s.time === oldSlot && !s.disabled
             )
         ) {
             selectedSlot = oldSlot;
         } else {
-            // Auto-select first available if it's a date selection or addons change
+            // Auto-select first available 
             const allAvailable = [
                 ...morningSlots,
                 ...afternoonSlots,
                 ...eveningSlots,
-            ];
+            ].filter(s => !s.disabled);
+            
             if (allAvailable.length > 0) {
-                selectedSlot = allAvailable[0];
+                selectedSlot = allAvailable[0].time;
             }
         }
 
@@ -301,7 +353,17 @@
                 }
 
                 if (professionals.length > 0) {
-                    selectedProfessional = professionals[0];
+                    // Try to preserve Agendamentos if we are re-selecting the same professional or if the new object lacks them
+                    const newProf = professionals[0];
+                    if (selectedProfessional && (selectedProfessional.id || selectedProfessional.ID) === (newProf.id || newProf.ID)) {
+                         const oldAgendamentos = selectedProfessional.Agendamentos || selectedProfessional.agendamentos;
+                         if (oldAgendamentos && oldAgendamentos.length > 0) {
+                             if (!newProf.Agendamentos && !newProf.agendamentos) {
+                                 newProf.Agendamentos = oldAgendamentos;
+                             }
+                         }
+                    }
+                    selectedProfessional = newProf;
                     error = ""; // Clear errors when changing context
                 } else {
                     selectedProfessional = null;
@@ -312,6 +374,67 @@
         } finally {
             loadingProfessionals = false;
         }
+    }
+
+    async function fetchProviderAppointments(profId: string, dateStr: string) {
+        try {
+            const res = await fetch(`/api/v1/agendamentos/prestador/${profId}?data=${dateStr}`);
+            if (res.ok) {
+                const json = await res.json();
+                fetchedAppointments = json.data || [];
+            } else {
+                fetchedAppointments = [];
+            }
+        } catch (e) {
+            console.error("Error fetching provider appointments:", e);
+            fetchedAppointments = [];
+        }
+    }
+
+    async function fetchClientAppointments(dateStr: string) {
+        try {
+            // Fetch using the current CLIENTE_ID
+            const res = await fetch(`/api/v1/agendamentos/cliente/${CLIENTE_ID}?data=${dateStr}`);
+            if (res.ok) {
+                const json = await res.json();
+                fetchedClientAppointments = json.data || [];
+            } else {
+                fetchedClientAppointments = [];
+            }
+        } catch (e) {
+            console.error("Error fetching client appointments:", e);
+            fetchedClientAppointments = [];
+        }
+    }
+
+    // Trigger fetches when dependencies change
+    $: if (selectedDay !== null) {
+        const month = String(currentMonth + 1).padStart(2, "0");
+        const dayStr = String(selectedDay).padStart(2, "0");
+        const dateStr = `${currentYear}-${month}-${dayStr}`;
+        
+        // Always fetch client appointments for the selected date
+        fetchClientAppointments(dateStr);
+
+        // If professional is selected, fetch their appointments too
+        if (selectedProfessional) {
+            const profId = selectedProfessional.id || selectedProfessional.ID;
+            fetchProviderAppointments(profId, dateStr);
+        }
+    } else if (selectedProfessional && selectedDay !== null) {
+        // Redundant but keeps the reactivity safe if only professional changes while day is selected
+         const month = String(currentMonth + 1).padStart(2, "0");
+        const dayStr = String(selectedDay).padStart(2, "0");
+        const dateStr = `${currentYear}-${month}-${dayStr}`;
+        const profId = selectedProfessional.id || selectedProfessional.ID;
+        fetchProviderAppointments(profId, dateStr);
+    }
+    
+    // Regenerate slots when data is ready
+    $: if (fetchedAppointments || fetchedClientAppointments || selectedService || selectedAddonIds) {
+         if (selectedProfessional && selectedDay) {
+             generateSlots();
+         }
     }
 
     // --- API Interactions ---
@@ -418,10 +541,14 @@
 
             if (response.ok) {
                 showSuccessModal = true;
-                // successMessage = "Agendamento realizado com sucesso!";
-                // setTimeout(() => {
-                //     successMessage = ""; 
-                // }, 3000);
+                
+                // Refresh data immediately to update slots
+                const dateOnly = dateTimeString.split("T")[0]; // YYYY-MM-DD
+                await fetchClientAppointments(dateOnly);
+                if (selectedProfessional) {
+                     const profId = selectedProfessional.id || selectedProfessional.ID;
+                     await fetchProviderAppointments(profId, dateOnly);
+                }
             } else {
                 const text = await response.text();
                 console.error("Erro no agendamento:", text);
@@ -935,14 +1062,16 @@
                                                 >
                                                     {#each morningSlots as slot}
                                                         <button
+                                                            disabled={slot.disabled}
                                                             class="px-3 py-2 text-sm font-medium border rounded-md transition-all duration-200
-                                                            {selectedSlot === slot
+                                                            {selectedSlot === slot.time
                                                                 ? 'border-brand-orange bg-brand-orange text-white shadow-sm'
-                                                                : 'border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:border-brand-orange hover:text-brand-orange dark:hover:text-brand-orange'}"
+                                                                : 'border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:border-brand-orange hover:text-brand-orange dark:hover:text-brand-orange'}
+                                                            {slot.disabled ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 hover:border-border-light dark:hover:border-border-dark hover:text-gray-400 dark:hover:text-gray-600' : ''}"
                                                             on:click={() =>
-                                                                (selectedSlot = slot)}
+                                                                (selectedSlot = slot.time)}
                                                         >
-                                                            {slot}
+                                                            {slot.time}
                                                         </button>
                                                     {/each}
                                                 </div>
@@ -961,14 +1090,16 @@
                                                 >
                                                     {#each afternoonSlots as slot}
                                                         <button
+                                                            disabled={slot.disabled}
                                                             class="px-3 py-2 text-sm font-medium border rounded-md transition-all duration-200
-                                                            {selectedSlot === slot
+                                                            {selectedSlot === slot.time
                                                                 ? 'border-brand-orange bg-brand-orange text-white shadow-sm'
-                                                                : 'border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:border-brand-orange hover:text-brand-orange dark:hover:text-brand-orange'}"
+                                                                : 'border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:border-brand-orange hover:text-brand-orange dark:hover:text-brand-orange'}
+                                                            {slot.disabled ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 hover:border-border-light dark:hover:border-border-dark hover:text-gray-400 dark:hover:text-gray-600' : ''}"
                                                             on:click={() =>
-                                                                (selectedSlot = slot)}
+                                                                (selectedSlot = slot.time)}
                                                         >
-                                                            {slot}
+                                                            {slot.time}
                                                         </button>
                                                     {/each}
                                                 </div>
@@ -987,14 +1118,16 @@
                                                 >
                                                     {#each eveningSlots as slot}
                                                         <button
+                                                            disabled={slot.disabled}
                                                             class="px-3 py-2 text-sm font-medium border rounded-md transition-all duration-200
-                                                            {selectedSlot === slot
+                                                            {selectedSlot === slot.time
                                                                 ? 'border-brand-orange bg-brand-orange text-white shadow-sm'
-                                                                : 'border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:border-brand-orange hover:text-brand-orange dark:hover:text-brand-orange'}"
+                                                                : 'border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:border-brand-orange hover:text-brand-orange dark:hover:text-brand-orange'}
+                                                            {slot.disabled ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 hover:border-border-light dark:hover:border-border-dark hover:text-gray-400 dark:hover:text-gray-600' : ''}"
                                                             on:click={() =>
-                                                                (selectedSlot = slot)}
+                                                                (selectedSlot = slot.time)}
                                                         >
-                                                            {slot}
+                                                            {slot.time}
                                                         </button>
                                                     {/each}
                                                 </div>
@@ -1015,97 +1148,6 @@
                                     </div>
                                 </div>
                             {/if}
-
-                            <!-- Add-ons -->
-                            <div
-                                class="mt-8 pt-8 border-t border-border-light dark:border-border-dark"
-                            >
-                                <h2
-                                    class="text-lg font-bold text-gray-900 dark:text-white mb-4"
-                                >
-                                    Adicione ao seu tratamento
-                                </h2>
-                                <div
-                                    class="grid grid-cols-1 md:grid-cols-3 gap-6"
-                                >
-                                    {#each availableAddons as addon}
-                                        {@const addonId = addon.ID || addon.id}
-                                        {@const isSelected =
-                                            selectedAddonIds.includes(addonId)}
-                                        <button
-                                            on:click={() => toggleAddon(addon)}
-                                            class="flex items-center p-3 rounded-lg border transition-all duration-200 text-left
-                                            {isSelected
-                                                ? 'border-brand-orange bg-brand-orange/5 shadow-md'
-                                                : 'border-border-light dark:border-border-dark bg-[hsl(var(--bs-card))] hover:shadow-md'}"
-                                        >
-                                            <div
-                                                class="h-12 w-12 rounded-lg flex items-center justify-center mr-4 transition-colors
-                                                {isSelected
-                                                    ? 'bg-brand-orange text-white'
-                                                    : 'bg-gray-100 dark:bg-gray-800 text-brand-orange'}"
-                                            >
-                                                <span class="material-icons">
-                                                    {addon.Categoria ===
-                                                        "Estética Facial" ||
-                                                    addon.categoria ===
-                                                        "Estética Facial"
-                                                        ? "face"
-                                                        : addon.Categoria ===
-                                                                "Maquiagem" ||
-                                                            addon.categoria ===
-                                                                "Maquiagem"
-                                                          ? "brush"
-                                                          : addon.Categoria ===
-                                                                  "Unhas" ||
-                                                              addon.categoria ===
-                                                                  "Unhas"
-                                                            ? "back_hand"
-                                                            : "spa"}
-                                                </span>
-                                            </div>
-                                            <div class="flex-1">
-                                                <h4
-                                                    class="font-medium text-gray-900 dark:text-white text-sm"
-                                                >
-                                                    {addon.Nome || addon.nome}
-                                                </h4>
-                                                <p
-                                                    class="text-xs text-gray-500 dark:text-gray-400"
-                                                >
-                                                    + {addon.DuracaoPadrao ||
-                                                        addon.duracao_padrao ||
-                                                        60} min • R$ {(addon.Preco ||
-                                                        addon.preco ||
-                                                        0) / 100},00
-                                                </p>
-                                            </div>
-                                            <div
-                                                class="h-8 w-8 rounded-full border flex items-center justify-center transition-colors
-                                                {isSelected
-                                                    ? 'bg-brand-orange border-brand-orange text-white'
-                                                    : 'border-gray-300 dark:border-gray-600 text-gray-400 group-hover:text-brand-orange group-hover:border-brand-orange'}"
-                                            >
-                                                <span
-                                                    class="material-icons text-sm"
-                                                >
-                                                    {isSelected
-                                                        ? "check"
-                                                        : "add"}
-                                                </span>
-                                            </div>
-                                        </button>
-                                    {/each}
-                                </div>
-                                {#if availableAddons.length === 0}
-                                    <p
-                                        class="text-sm text-gray-500 italic mt-2"
-                                    >
-                                        Este profissional não possui outros
-                                        serviços disponíveis para adicionar.
-                                    </p>
-                                {/if}
-                            </div>
 
                             <!-- Actions -->
                             <div
