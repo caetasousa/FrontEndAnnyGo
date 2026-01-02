@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import Sidebar from "$lib/components/Sidebar.svelte";
-    import ThemeToggle from "$lib/components/ThemeToggle.svelte";
+    import DashboardNavbar from "$lib/components/DashboardNavbar.svelte";
     import Modal from "$lib/components/Modal.svelte";
     import ImageUpload from "$lib/components/ImageUpload.svelte";
     import AlertModal from "$lib/components/AlertModal.svelte";
@@ -359,34 +359,7 @@
     <Sidebar />
 
     <main class="flex-1 flex flex-col h-full overflow-hidden relative">
-        <header
-            class="h-16 bg-[hsl(var(--bs-card))] flex items-center justify-between px-6 z-10"
-        >
-            <div class="flex items-center flex-1 max-w-2xl">
-                <div class="relative w-full">
-                    <span
-                        class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-                    >
-                        <span class="material-symbols-outlined text-gray-400"
-                            >search</span
-                        >
-                    </span>
-                    <input
-                        class="block w-full pl-10 pr-3 py-2 border border-border-light dark:border-border-dark rounded-md leading-5 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-colors"
-                        placeholder="Pesquisar serviços..."
-                        type="text"
-                    />
-                </div>
-            </div>
-            <div class="flex items-center space-x-4 ml-4">
-                <button
-                    class="p-2 rounded-full text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none transition-colors"
-                >
-                    <span class="material-symbols-outlined">notifications</span>
-                </button>
-                <ThemeToggle />
-            </div>
-        </header>
+        <DashboardNavbar />
 
         <div class="flex-1 overflow-y-auto p-6 md:p-8">
             <div class="max-w-5xl mx-auto space-y-6">

@@ -1,5 +1,7 @@
 <script lang="ts">
     import Sidebar from "$lib/components/Sidebar.svelte";
+    import DashboardNavbar from "$lib/components/DashboardNavbar.svelte";
+    import AlertModal from "$lib/components/AlertModal.svelte";
     import { onMount } from "svelte";
     import { page } from "$app/stores";
 
@@ -12,7 +14,6 @@
     let selectedProfessional: any = null;
     let selectedService: any = null; // Serviço principal selecionado (hardcoded first for now if list loaded)
 
-
     let preSelectedServiceId: string | null = null;
     let fetchedAppointments: any[] = []; // Store explicitly fetched appointments
     let fetchedClientAppointments: any[] = []; // Store client's existing appointments
@@ -24,6 +25,11 @@
     let error = "";
     let successMessage = "";
     let showSuccessModal = false;
+
+    // Estado do Modal de Erro
+    let showErrorModal = false;
+    let errorTitle = "";
+    let errorMessage = "";
 
     // Addons State
     let selectedAddonIds: string[] = [];
@@ -200,23 +206,38 @@
             }
         });
 
-
-
         // Filter valid appointments for the current day
-        const dayProviderAppointments = fetchedAppointments.filter((ap: any) => {
-             const dataInicio = ap.data_inicio || ap.DataInicio || ap.start_time || ap.StartTime || "";
-             return dataInicio.startsWith(dateStr);
-        });
+        const dayProviderAppointments = fetchedAppointments.filter(
+            (ap: any) => {
+                const dataInicio =
+                    ap.data_inicio ||
+                    ap.DataInicio ||
+                    ap.start_time ||
+                    ap.StartTime ||
+                    "";
+                return dataInicio.startsWith(dateStr);
+            },
+        );
 
-        const dayClientAppointments = fetchedClientAppointments.filter((ap: any) => {
-             const dataInicio = ap.data_inicio || ap.DataInicio || ap.start_time || ap.StartTime || "";
-             return dataInicio.startsWith(dateStr);
-        });
-        
+        const dayClientAppointments = fetchedClientAppointments.filter(
+            (ap: any) => {
+                const dataInicio =
+                    ap.data_inicio ||
+                    ap.DataInicio ||
+                    ap.start_time ||
+                    ap.StartTime ||
+                    "";
+                return dataInicio.startsWith(dateStr);
+            },
+        );
+
         // Combine all appointments that effectively block the slot
         // 1. Appointments of the provider (he is busy)
         // 2. Appointments of the client (he is busy)
-        const allBlockers = [...dayProviderAppointments, ...dayClientAppointments];
+        const allBlockers = [
+            ...dayProviderAppointments,
+            ...dayClientAppointments,
+        ];
 
         // Distribute slots with overlap check
         allSlots.forEach((slot) => {
@@ -226,44 +247,56 @@
             // Check overlap with existing appointments (provider's OR client's)
             const hasOverlap = allBlockers.some((ap: any) => {
                 let apStartMinutes = -1;
-                let apDuracaoMinutes = 60; 
+                let apDuracaoMinutes = 60;
 
                 // 1. Tentar extrair Duração
                 apDuracaoMinutes = Number(
-                    ap.Duracao || ap.duracao || ap.DuracaoMinutos || ap.duracao_minutos ||
-                    ap.servico?.DuracaoPadrao || ap.servico?.duracao_padrao || ap.Servico?.DuracaoPadrao || 
-                     ap.servico?.duracao || ap.Servico?.Duracao ||
-                    60
+                    ap.Duracao ||
+                        ap.duracao ||
+                        ap.DuracaoMinutos ||
+                        ap.duracao_minutos ||
+                        ap.servico?.DuracaoPadrao ||
+                        ap.servico?.duracao_padrao ||
+                        ap.Servico?.DuracaoPadrao ||
+                        ap.servico?.duracao ||
+                        ap.Servico?.Duracao ||
+                        60,
                 );
 
                 // 2. Parse Start Time
-                const startStr = ap.data_inicio || ap.DataInicio || ap.start_time || ap.StartTime || "";
-                
+                const startStr =
+                    ap.data_inicio ||
+                    ap.DataInicio ||
+                    ap.start_time ||
+                    ap.StartTime ||
+                    "";
+
                 if (startStr) {
                     if (startStr.includes("T")) {
-                         // ISO format: YYYY-MM-DDTHH:MM:SS
-                         const timePart = startStr.split("T")[1]; // HH:MM:SS...
-                         if (timePart) {
-                             const [hh, mm] = timePart.split(":").map(Number);
-                             apStartMinutes = hh * 60 + mm;
-                         }
+                        // ISO format: YYYY-MM-DDTHH:MM:SS
+                        const timePart = startStr.split("T")[1]; // HH:MM:SS...
+                        if (timePart) {
+                            const [hh, mm] = timePart.split(":").map(Number);
+                            apStartMinutes = hh * 60 + mm;
+                        }
                     } else if (startStr.includes(" ")) {
                         // "YYYY-MM-DD HH:MM"
                         const timePart = startStr.split(" ")[1];
                         if (timePart) {
                             const [hh, mm] = timePart.split(":").map(Number);
-                             apStartMinutes = hh * 60 + mm;
+                            apStartMinutes = hh * 60 + mm;
                         }
                     }
                 }
-                
+
                 // Keep backward compatibility/Fallback if new parsing failed
                 if (apStartMinutes === -1) {
                     // Try old logic
-                     const isolatedTime = ap.HoraInicio || ap.hora_inicio || ap.Hora || ap.hora;
-                     if (isolatedTime) {
-                         apStartMinutes = timeToMinutes(isolatedTime);
-                     }
+                    const isolatedTime =
+                        ap.HoraInicio || ap.hora_inicio || ap.Hora || ap.hora;
+                    if (isolatedTime) {
+                        apStartMinutes = timeToMinutes(isolatedTime);
+                    }
                 }
 
                 if (apStartMinutes === -1) return false;
@@ -286,18 +319,18 @@
         if (
             oldSlot &&
             [...morningSlots, ...afternoonSlots, ...eveningSlots].some(
-                (s) => s.time === oldSlot && !s.disabled
+                (s) => s.time === oldSlot && !s.disabled,
             )
         ) {
             selectedSlot = oldSlot;
         } else {
-            // Auto-select first available 
+            // Auto-select first available
             const allAvailable = [
                 ...morningSlots,
                 ...afternoonSlots,
                 ...eveningSlots,
-            ].filter(s => !s.disabled);
-            
+            ].filter((s) => !s.disabled);
+
             if (allAvailable.length > 0) {
                 selectedSlot = allAvailable[0].time;
             }
@@ -337,15 +370,18 @@
                     professionals = allFromDate.filter((p: any) => {
                         const catalogo = p.Catalogo || p.catalogo || p.catalog;
                         // If no catalog info, we might want to show them anyway if they are in 'disponiveis'
-                        // but to be safe with the user's requirements of "listing correctly", 
+                        // but to be safe with the user's requirements of "listing correctly",
                         // we should check if the service is indeed there if the info exists.
                         if (!catalogo || !Array.isArray(catalogo)) {
-                            console.warn(`Prestador ${p.id || p.ID} sem catálogo na resposta de disponíveis`);
+                            console.warn(
+                                `Prestador ${p.id || p.ID} sem catálogo na resposta de disponíveis`,
+                            );
                             return true; // Fallback: show if no catalog info to avoid empty list
                         }
 
                         return catalogo.some(
-                            (s: any) => String(s.id || s.ID) === String(targetId),
+                            (s: any) =>
+                                String(s.id || s.ID) === String(targetId),
                         );
                     });
                 } else {
@@ -355,13 +391,22 @@
                 if (professionals.length > 0) {
                     // Try to preserve Agendamentos if we are re-selecting the same professional or if the new object lacks them
                     const newProf = professionals[0];
-                    if (selectedProfessional && (selectedProfessional.id || selectedProfessional.ID) === (newProf.id || newProf.ID)) {
-                         const oldAgendamentos = selectedProfessional.Agendamentos || selectedProfessional.agendamentos;
-                         if (oldAgendamentos && oldAgendamentos.length > 0) {
-                             if (!newProf.Agendamentos && !newProf.agendamentos) {
-                                 newProf.Agendamentos = oldAgendamentos;
-                             }
-                         }
+                    if (
+                        selectedProfessional &&
+                        (selectedProfessional.id || selectedProfessional.ID) ===
+                            (newProf.id || newProf.ID)
+                    ) {
+                        const oldAgendamentos =
+                            selectedProfessional.Agendamentos ||
+                            selectedProfessional.agendamentos;
+                        if (oldAgendamentos && oldAgendamentos.length > 0) {
+                            if (
+                                !newProf.Agendamentos &&
+                                !newProf.agendamentos
+                            ) {
+                                newProf.Agendamentos = oldAgendamentos;
+                            }
+                        }
                     }
                     selectedProfessional = newProf;
                     error = ""; // Clear errors when changing context
@@ -378,7 +423,9 @@
 
     async function fetchProviderAppointments(profId: string, dateStr: string) {
         try {
-            const res = await fetch(`/api/v1/agendamentos/prestador/${profId}?data=${dateStr}`);
+            const res = await fetch(
+                `/api/v1/agendamentos/prestador/${profId}?data=${dateStr}`,
+            );
             if (res.ok) {
                 const json = await res.json();
                 fetchedAppointments = json.data || [];
@@ -394,7 +441,9 @@
     async function fetchClientAppointments(dateStr: string) {
         try {
             // Fetch using the current CLIENTE_ID
-            const res = await fetch(`/api/v1/agendamentos/cliente/${CLIENTE_ID}?data=${dateStr}`);
+            const res = await fetch(
+                `/api/v1/agendamentos/cliente/${CLIENTE_ID}?data=${dateStr}`,
+            );
             if (res.ok) {
                 const json = await res.json();
                 fetchedClientAppointments = json.data || [];
@@ -412,7 +461,7 @@
         const month = String(currentMonth + 1).padStart(2, "0");
         const dayStr = String(selectedDay).padStart(2, "0");
         const dateStr = `${currentYear}-${month}-${dayStr}`;
-        
+
         // Always fetch client appointments for the selected date
         fetchClientAppointments(dateStr);
 
@@ -423,18 +472,23 @@
         }
     } else if (selectedProfessional && selectedDay !== null) {
         // Redundant but keeps the reactivity safe if only professional changes while day is selected
-         const month = String(currentMonth + 1).padStart(2, "0");
+        const month = String(currentMonth + 1).padStart(2, "0");
         const dayStr = String(selectedDay).padStart(2, "0");
         const dateStr = `${currentYear}-${month}-${dayStr}`;
         const profId = selectedProfessional.id || selectedProfessional.ID;
         fetchProviderAppointments(profId, dateStr);
     }
-    
+
     // Regenerate slots when data is ready
-    $: if (fetchedAppointments || fetchedClientAppointments || selectedService || selectedAddonIds) {
-         if (selectedProfessional && selectedDay) {
-             generateSlots();
-         }
+    $: if (
+        fetchedAppointments ||
+        fetchedClientAppointments ||
+        selectedService ||
+        selectedAddonIds
+    ) {
+        if (selectedProfessional && selectedDay) {
+            generateSlots();
+        }
     }
 
     // --- API Interactions ---
@@ -477,9 +531,9 @@
                     professionals = allProfessionals.filter((p: any) => {
                         const catalogo = p.Catalogo || p.catalogo || p.catalog;
                         if (!catalogo || !Array.isArray(catalogo)) {
-                            // If no catalog info on main list, we better show them 
+                            // If no catalog info on main list, we better show them
                             // or we might end up with an empty list if API doesn't populate it
-                            return true; 
+                            return true;
                         }
                         return catalogo.some(
                             (s: any) =>
@@ -502,6 +556,68 @@
         }
     }
 
+    // Função para exibir erros amigáveis
+    function showError(apiError: string) {
+        let title = "Erro ao Agendar";
+        let message = "Não foi possível realizar o agendamento.";
+
+        try {
+            // Tenta parsear JSON se for um objeto
+            const errorObj = JSON.parse(apiError);
+            const errorText = errorObj.error || errorObj.message || apiError;
+
+            // Mensagens amigáveis baseadas no erro da API
+            if (
+                errorText.toLowerCase().includes("ja existe um agendamento") ||
+                errorText.toLowerCase().includes("já existe um agendamento")
+            ) {
+                title = "Agendamento Duplicado";
+                message =
+                    "Você já possui um agendamento para este serviço neste dia. Por favor, escolha outra data ou horário.";
+            } else if (
+                errorText.toLowerCase().includes("horário") ||
+                errorText.toLowerCase().includes("horario") ||
+                errorText.toLowerCase().includes("ocupado")
+            ) {
+                title = "Horário Indisponível";
+                message =
+                    "Este horário não está mais disponível. Por favor, selecione outro horário.";
+            } else if (
+                errorText.toLowerCase().includes("profissional") ||
+                errorText.toLowerCase().includes("prestador")
+            ) {
+                title = "Profissional Indisponível";
+                message =
+                    "O profissional selecionado não está disponível neste momento. Por favor, escolha outro profissional.";
+            } else {
+                // Erro genérico mas mais amigável
+                message =
+                    "Ocorreu um erro ao processar seu agendamento. Por favor, tente novamente ou entre em contato conosco.";
+            }
+        } catch {
+            // Se não for JSON, trata como string simples
+            if (
+                apiError.toLowerCase().includes("ja existe") ||
+                apiError.toLowerCase().includes("já existe")
+            ) {
+                title = "Agendamento Duplicado";
+                message =
+                    "Você já possui um agendamento para este serviço neste dia. Por favor, escolha outra data ou horário.";
+            } else if (
+                apiError.toLowerCase().includes("conexão") ||
+                apiError.toLowerCase().includes("connection")
+            ) {
+                title = "Erro de Conexão";
+                message =
+                    "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.";
+            }
+        }
+
+        errorTitle = title;
+        errorMessage = message;
+        showErrorModal = true;
+    }
+
     async function handleConfirmAppointment() {
         if (
             !selectedProfessional ||
@@ -509,7 +625,9 @@
             !selectedDay ||
             !selectedSlot
         ) {
-            alert("Por favor, selecione todas as opções.");
+            showError(
+                "Por favor, selecione todas as opções antes de confirmar o agendamento.",
+            );
             return;
         }
 
@@ -541,44 +659,31 @@
 
             if (response.ok) {
                 showSuccessModal = true;
-                
+
                 // Refresh data immediately to update slots
                 const dateOnly = dateTimeString.split("T")[0]; // YYYY-MM-DD
                 await fetchClientAppointments(dateOnly);
                 if (selectedProfessional) {
-                     const profId = selectedProfessional.id || selectedProfessional.ID;
-                     await fetchProviderAppointments(profId, dateOnly);
+                    const profId =
+                        selectedProfessional.id || selectedProfessional.ID;
+                    await fetchProviderAppointments(profId, dateOnly);
                 }
             } else {
                 const text = await response.text();
                 console.error("Erro no agendamento:", text);
-                error = "Erro ao agendar: " + text;
+                showError(text);
             }
         } catch (e) {
             console.error("Erro de conexão:", e);
-            error = "Erro de conexão ao tentar agendar.";
+            showError("Erro de conexão ao tentar agendar.");
         } finally {
             submitting = false;
         }
     }
 
     onMount(() => {
-        // Theme check
-        if (document.documentElement.classList.contains("dark")) {
-            isDark = true;
-        }
-        // Load Data
         fetchData();
     });
-
-    function toggleTheme() {
-        isDark = !isDark;
-        if (isDark) {
-            document.documentElement.classList.add("dark");
-        } else {
-            document.documentElement.classList.remove("dark");
-        }
-    }
 </script>
 
 <div
@@ -588,71 +693,11 @@
     <Sidebar />
 
     <main class="flex-1 flex flex-col h-full overflow-hidden relative">
-        <!-- Header -->
-        <header
-            class="h-16 bg-[hsl(var(--bs-card))] border-b border-border-light dark:border-border-dark flex items-center justify-between px-6 z-10 flex-shrink-0"
-        >
-            <div class="flex items-center flex-1 max-w-2xl">
-                <div class="relative w-full">
-                    <span
-                        class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-                    >
-                        <span class="material-icons text-gray-400">search</span>
-                    </span>
-                    <input
-                        type="text"
-                        class="block w-full pl-10 pr-3 py-2 border border-border-light dark:border-border-dark rounded-md leading-5 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-brand focus:border-brand-orange sm:text-sm"
-                        placeholder="Pesquisar serviços ou profissionais..."
-                    />
-                </div>
-            </div>
-            <div class="flex items-center space-x-4 ml-4">
-                <button
-                    class="p-2 rounded-full text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none transition-colors"
-                >
-                    <span class="material-icons">notifications</span>
-                </button>
-                <button
-                    class="p-2 rounded-full text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none transition-colors"
-                    on:click={toggleTheme}
-                >
-                    <span
-                        class="material-symbols-outlined {isDark
-                            ? 'hidden'
-                            : 'block'}">dark_mode</span
-                    >
-                    <span
-                        class="material-symbols-outlined {isDark
-                            ? 'block'
-                            : 'hidden'}">light_mode</span
-                    >
-                </button>
-            </div>
-        </header>
+        <DashboardNavbar />
 
         <!-- Content -->
         <div class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
             <div class="max-w-6xl mx-auto space-y-6">
-                <!-- Notifications -->
-                {#if error}
-                    <div
-                        class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
-                        role="alert"
-                    >
-                        <strong class="font-bold">Erro!</strong>
-                        <span class="block sm:inline">{error}</span>
-                    </div>
-                {/if}
-                {#if successMessage}
-                    <div
-                        class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative"
-                        role="alert"
-                    >
-                        <strong class="font-bold">Sucesso!</strong>
-                        <span class="block sm:inline">{successMessage}</span>
-                    </div>
-                {/if}
-
                 <!-- Breadcrumbs & Title -->
                 <div>
                     <nav
@@ -979,34 +1024,21 @@
                                                 on:click={() => selectDay(day)}
                                                 class="aspect-square relative flex items-start justify-end p-2 rounded-lg border transition-all group
                                             {isPast
-                                                    ? 'opacity-40 cursor-not-allowed grayscale bg-transparent'
-                                                    : 'hover:border-brand-orange bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20'}
+                                                    ? 'opacity-40 cursor-not-allowed grayscale'
+                                                    : 'hover:border-brand-orange'}
                                             {isSelected
-                                                    ? '!bg-blue-100 dark:!bg-blue-900/40 !border-blue-500 ring-1 ring-blue-500'
-                                                    : 'border-transparent'}
-                                            {isSunday && !isPast
-                                                    ? 'bg-red-50/50 dark:bg-red-900/10'
-                                                    : ''}
-                                            {isSaturday &&
-                                                !isPast &&
-                                                !isSelected
-                                                    ? 'bg-orange-50 dark:bg-orange-900/10'
-                                                    : ''}
+                                                    ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-500'
+                                                    : isSunday
+                                                      ? 'bg-red-50 dark:bg-red-900/10 border-transparent'
+                                                      : isSaturday
+                                                        ? 'bg-orange-50 dark:bg-orange-900/10 border-transparent'
+                                                        : 'bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 border-transparent'}
                                             "
                                             >
                                                 <span
-                                                    class="z-10 text-sm font-medium
-                                                {isSunday ? 'text-red-500' : ''}
-                                                {isSaturday && !isSelected
-                                                        ? 'text-orange-600 dark:text-orange-400'
-                                                        : ''}
-                                                {isSelected
-                                                        ? 'text-blue-600 dark:text-blue-300'
-                                                        : !isSunday &&
-                                                            !isSaturday
-                                                          ? 'text-gray-700 dark:text-gray-300'
-                                                          : ''}
-                                                "
+                                                    class="z-10 text-sm font-medium {isSunday
+                                                        ? 'text-red-500'
+                                                        : 'text-gray-700 dark:text-gray-300'}"
                                                 >
                                                     {day}
                                                 </span>
@@ -1015,13 +1047,20 @@
                                                 <div
                                                     class="absolute inset-x-1 bottom-1 flex flex-col items-center"
                                                 >
-                                                    {#if !isPast && !isSunday}
+                                                    {#if isSunday && !isPast}
+                                                        <span
+                                                            class="text-[10px] font-bold text-red-500 uppercase tracking-tight truncate w-full"
+                                                            >Folga</span
+                                                        >
+                                                    {:else if isSaturday && !isPast}
+                                                        <div
+                                                            class="w-1.5 h-1.5 rounded-full bg-orange-400 mb-0.5"
+                                                        ></div>
+                                                    {:else if !isPast}
                                                         <div
                                                             class="w-1.5 h-1.5 rounded-full {isSelected
                                                                 ? 'bg-blue-500'
-                                                                : isSaturday
-                                                                  ? 'bg-orange-400'
-                                                                  : 'bg-green-400'} mb-1"
+                                                                : 'bg-green-400'}"
                                                         ></div>
                                                     {/if}
                                                 </div>
@@ -1041,11 +1080,15 @@
                                     <h3
                                         class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center"
                                     >
-                                        <span class="material-icons mr-2 text-brand-orange"
+                                        <span
+                                            class="material-icons mr-2 text-brand-orange"
                                             >schedule</span
                                         >
-                                        Horários Disponíveis <span class="ml-2 text-sm font-normal text-gray-500"
-                                            >{selectedDay}/{currentMonth + 1}</span
+                                        Horários Disponíveis
+                                        <span
+                                            class="ml-2 text-sm font-normal text-gray-500"
+                                            >{selectedDay}/{currentMonth +
+                                                1}</span
                                         >
                                     </h3>
 
@@ -1064,12 +1107,16 @@
                                                         <button
                                                             disabled={slot.disabled}
                                                             class="px-3 py-2 text-sm font-medium border rounded-md transition-all duration-200
-                                                            {selectedSlot === slot.time
+                                                            {selectedSlot ===
+                                                            slot.time
                                                                 ? 'border-brand-orange bg-brand-orange text-white shadow-sm'
                                                                 : 'border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:border-brand-orange hover:text-brand-orange dark:hover:text-brand-orange'}
-                                                            {slot.disabled ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 hover:border-border-light dark:hover:border-border-dark hover:text-gray-400 dark:hover:text-gray-600' : ''}"
+                                                            {slot.disabled
+                                                                ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 hover:border-border-light dark:hover:border-border-dark hover:text-gray-400 dark:hover:text-gray-600'
+                                                                : ''}"
                                                             on:click={() =>
-                                                                (selectedSlot = slot.time)}
+                                                                (selectedSlot =
+                                                                    slot.time)}
                                                         >
                                                             {slot.time}
                                                         </button>
@@ -1092,12 +1139,16 @@
                                                         <button
                                                             disabled={slot.disabled}
                                                             class="px-3 py-2 text-sm font-medium border rounded-md transition-all duration-200
-                                                            {selectedSlot === slot.time
+                                                            {selectedSlot ===
+                                                            slot.time
                                                                 ? 'border-brand-orange bg-brand-orange text-white shadow-sm'
                                                                 : 'border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:border-brand-orange hover:text-brand-orange dark:hover:text-brand-orange'}
-                                                            {slot.disabled ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 hover:border-border-light dark:hover:border-border-dark hover:text-gray-400 dark:hover:text-gray-600' : ''}"
+                                                            {slot.disabled
+                                                                ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 hover:border-border-light dark:hover:border-border-dark hover:text-gray-400 dark:hover:text-gray-600'
+                                                                : ''}"
                                                             on:click={() =>
-                                                                (selectedSlot = slot.time)}
+                                                                (selectedSlot =
+                                                                    slot.time)}
                                                         >
                                                             {slot.time}
                                                         </button>
@@ -1120,12 +1171,16 @@
                                                         <button
                                                             disabled={slot.disabled}
                                                             class="px-3 py-2 text-sm font-medium border rounded-md transition-all duration-200
-                                                            {selectedSlot === slot.time
+                                                            {selectedSlot ===
+                                                            slot.time
                                                                 ? 'border-brand-orange bg-brand-orange text-white shadow-sm'
                                                                 : 'border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:border-brand-orange hover:text-brand-orange dark:hover:text-brand-orange'}
-                                                            {slot.disabled ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 hover:border-border-light dark:hover:border-border-dark hover:text-gray-400 dark:hover:text-gray-600' : ''}"
+                                                            {slot.disabled
+                                                                ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 hover:border-border-light dark:hover:border-border-dark hover:text-gray-400 dark:hover:text-gray-600'
+                                                                : ''}"
                                                             on:click={() =>
-                                                                (selectedSlot = slot.time)}
+                                                                (selectedSlot =
+                                                                    slot.time)}
                                                         >
                                                             {slot.time}
                                                         </button>
@@ -1202,41 +1257,68 @@
 
     <!-- Success Modal -->
     {#if showSuccessModal}
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity duration-300">
-            <div class="bg-[hsl(var(--bs-card))] rounded-2xl shadow-2xl max-w-md w-full p-8 transform transition-all duration-300 scale-100 border border-border-light dark:border-border-dark text-center">
-                <div class="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <span class="material-icons text-green-500 text-4xl">check_circle</span>
+        <div
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+        >
+            <div
+                class="bg-[hsl(var(--bs-card))] rounded-2xl shadow-2xl max-w-md w-full p-8 transform transition-all duration-300 scale-100 border border-border-light dark:border-border-dark text-center"
+            >
+                <div
+                    class="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6"
+                >
+                    <span class="material-icons text-green-500 text-4xl"
+                        >check_circle</span
+                    >
                 </div>
-                
-                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Agendamento Realizado!</h2>
+
+                <h2
+                    class="text-2xl font-bold text-gray-900 dark:text-white mb-2"
+                >
+                    Agendamento Realizado!
+                </h2>
                 <p class="text-gray-600 dark:text-gray-400 mb-8">
-                    Seu agendamento foi realizado com sucesso! Estamos aguardando a confirmação do profissional.
+                    Seu agendamento foi realizado com sucesso! Estamos
+                    aguardando a confirmação do profissional.
                 </p>
 
-                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 mb-8 text-left space-y-2 border border-border-light dark:border-border-dark">
+                <div
+                    class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 mb-8 text-left space-y-2 border border-border-light dark:border-border-dark"
+                >
                     <div class="flex items-center text-sm">
-                        <span class="material-icons text-brand-orange text-lg mr-2">event</span>
-                        <span class="text-gray-700 dark:text-gray-300 font-medium">
+                        <span
+                            class="material-icons text-brand-orange text-lg mr-2"
+                            >event</span
+                        >
+                        <span
+                            class="text-gray-700 dark:text-gray-300 font-medium"
+                        >
                             {selectedDay}/{currentMonth + 1}/{currentYear} às {selectedSlot}
                         </span>
                     </div>
                     <div class="flex items-center text-sm">
-                        <span class="material-icons text-brand-orange text-lg mr-2">person</span>
-                        <span class="text-gray-700 dark:text-gray-300 font-medium">
-                            {selectedProfessional?.name || selectedProfessional?.nome || selectedProfessional?.Nome}
+                        <span
+                            class="material-icons text-brand-orange text-lg mr-2"
+                            >person</span
+                        >
+                        <span
+                            class="text-gray-700 dark:text-gray-300 font-medium"
+                        >
+                            {selectedProfessional?.name ||
+                                selectedProfessional?.nome ||
+                                selectedProfessional?.Nome}
                         </span>
                     </div>
                 </div>
 
                 <div class="space-y-3">
-                    <button 
-                        on:click={() => window.location.href = '/'}
+                    <button
+                        on:click={() => (window.location.href = "/")}
                         class="w-full py-3 px-4 bg-brand-orange hover:bg-brand-orange/90 text-white font-bold rounded-xl transition-all duration-200 shadow-lg shadow-brand-orange/20"
                     >
                         Ver Meus Agendamentos
                     </button>
-                    <button 
-                        on:click={() => showSuccessModal = false}
+                    <button
+                        on:click={() => (showSuccessModal = false)}
                         class="w-full py-3 px-4 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 font-medium rounded-xl transition-colors"
                     >
                         Fechar
@@ -1245,4 +1327,14 @@
             </div>
         </div>
     {/if}
+
+    <!-- Error Modal -->
+    <AlertModal
+        show={showErrorModal}
+        title={errorTitle}
+        message={errorMessage}
+        type="error"
+        on:confirm={() => (showErrorModal = false)}
+        on:cancel={() => (showErrorModal = false)}
+    />
 </div>

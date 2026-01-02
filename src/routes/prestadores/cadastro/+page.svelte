@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import Sidebar from "$lib/components/Sidebar.svelte";
+    import DashboardNavbar from "$lib/components/DashboardNavbar.svelte";
     import ThemeToggle from "$lib/components/ThemeToggle.svelte";
     import AlertModal from "$lib/components/AlertModal.svelte";
     import ImageUpload from "$lib/components/ImageUpload.svelte";
@@ -325,35 +326,7 @@
 >
     <Sidebar />
     <main class="flex-1 flex flex-col h-full overflow-hidden relative">
-        <header
-            class="h-16 bg-[hsl(var(--bs-card))] border-b border-border-light dark:border-border-dark flex items-center justify-between px-6 z-10"
-        >
-            <div class="flex items-center flex-1 max-w-2xl">
-                <!-- Search bar (placeholder layout) -->
-                <div class="relative w-full opacity-50 pointer-events-none">
-                    <span
-                        class="absolute inset-y-0 left-0 pl-3 flex items-center"
-                    >
-                        <span class="material-symbols-outlined text-gray-400"
-                            >search</span
-                        >
-                    </span>
-                    <input
-                        class="block w-full pl-10 pr-3 py-2 border border-border-light dark:border-border-dark rounded-md bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-sm"
-                        placeholder="Pesquisar..."
-                        disabled
-                    />
-                </div>
-            </div>
-            <div class="flex items-center space-x-4 ml-4">
-                <button
-                    class="p-2 rounded-full text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none transition-colors"
-                >
-                    <span class="material-symbols-outlined">notifications</span>
-                </button>
-                <ThemeToggle />
-            </div>
-        </header>
+        <DashboardNavbar />
 
         <div class="flex-1 overflow-y-auto p-6 md:p-8">
             <div class="max-w-4xl mx-auto space-y-6">

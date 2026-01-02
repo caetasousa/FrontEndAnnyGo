@@ -4,12 +4,16 @@
   import AlertModal from "$lib/components/AlertModal.svelte";
   import Modal from "$lib/components/Modal.svelte";
   import ImageUpload from "$lib/components/ImageUpload.svelte";
-  import { uploadPrestadorImageToSupabase, deleteImageFromSupabase } from "$lib/utils/imageUpload";
+  import {
+    uploadPrestadorImageToSupabase,
+    deleteImageFromSupabase,
+  } from "$lib/utils/imageUpload";
   import { onMount } from "svelte";
+    import DashboardNavbar from "$lib/components/DashboardNavbar.svelte";
 
   // Updated Provider Interface to match API (ID as string)
   interface Provider {
-    id: string; 
+    id: string;
     nome: string;
     email: string;
     telefone: string;
@@ -22,8 +26,8 @@
     status?: "disponivel" | "ocupado" | "ausente";
     biografia?: string;
     cpf?: string;
-    servicos?: string[]; 
-    catalogo?: any[]; 
+    servicos?: string[];
+    catalogo?: any[];
   }
 
   interface CatalogService {
@@ -66,41 +70,45 @@
   async function fetchProviders() {
     loadingProviders = true;
     try {
-        const ativoParam = statusFilter === 'ativos';
-        const res = await fetch(`/api/v1/prestadores?page=${page}&limit=${limit}&ativo=${ativoParam}`);
-        if (res.ok) {
-            const data = await res.json();
-            // Map API data to our Provider interface
-            providers = (data.data || []).map((p: any) => ({
-                id: p.ID,
-                nome: p.Nome,
-                email: p.Email,
-                telefone: p.Telefone,
-                cpf: p.Cpf,
-                ativo: p.Ativo,
-                foto: p.ImagemUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.Nome)}&background=random`,
-                especialidade: "Profissional", 
-                rating: 5.0, 
-                reviews: 0, 
-                status: "disponivel", 
-                biografia: "Sem biografia.", 
-                // Map Catalogo to local services array of names for display in card
-                servicos: p.Catalogo ? p.Catalogo.map((c: any) => c.Nome) : [],
-                catalogo: p.Catalogo || []
-            }));
-            totalProviders = data.total || 0;
-            // Calculate total pages based on API total
-            totalPages = Math.ceil(totalProviders / limit);
-        } else {
-          console.log("Resposta do servidor:", await res.text());
-            console.error("Erro ao buscar prestadores:", await res.text());
-            showAlert("Erro", "Falha ao carregar lista de prestadores.", "error");
-        }
+      const ativoParam = statusFilter === "ativos";
+      const res = await fetch(
+        `/api/v1/prestadores?page=${page}&limit=${limit}&ativo=${ativoParam}`,
+      );
+      if (res.ok) {
+        const data = await res.json();
+        // Map API data to our Provider interface
+        providers = (data.data || []).map((p: any) => ({
+          id: p.ID,
+          nome: p.Nome,
+          email: p.Email,
+          telefone: p.Telefone,
+          cpf: p.Cpf,
+          ativo: p.Ativo,
+          foto:
+            p.ImagemUrl ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(p.Nome)}&background=random`,
+          especialidade: "Profissional",
+          rating: 5.0,
+          reviews: 0,
+          status: "disponivel",
+          biografia: "Sem biografia.",
+          // Map Catalogo to local services array of names for display in card
+          servicos: p.Catalogo ? p.Catalogo.map((c: any) => c.Nome) : [],
+          catalogo: p.Catalogo || [],
+        }));
+        totalProviders = data.total || 0;
+        // Calculate total pages based on API total
+        totalPages = Math.ceil(totalProviders / limit);
+      } else {
+        console.log("Resposta do servidor:", await res.text());
+        console.error("Erro ao buscar prestadores:", await res.text());
+        showAlert("Erro", "Falha ao carregar lista de prestadores.", "error");
+      }
     } catch (error) {
-        console.error("Erro de conexão (prestadores):", error);
-        showAlert("Erro", "Erro de conexão ao buscar prestadores.", "error");
+      console.error("Erro de conexão (prestadores):", error);
+      showAlert("Erro", "Erro de conexão ao buscar prestadores.", "error");
     } finally {
-        loadingProviders = false;
+      loadingProviders = false;
     }
   }
 
@@ -108,21 +116,21 @@
   async function fetchServices() {
     loadingServices = true;
     try {
-        const res = await fetch("/api/v1/catalogos?limit=100");
-        if (res.ok) {
-            const data = await res.json();
-            if (data.data && Array.isArray(data.data)) {
-                // Store full objects now
-                availableServices = data.data.map((s: any) => ({
-                    ID: s.ID,
-                    Nome: s.Nome
-                }));
-            }
+      const res = await fetch("/api/v1/catalogos?limit=100");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.data && Array.isArray(data.data)) {
+          // Store full objects now
+          availableServices = data.data.map((s: any) => ({
+            ID: s.ID,
+            Nome: s.Nome,
+          }));
         }
+      }
     } catch (error) {
-        console.error("Erro de conexão (serviços):", error);
+      console.error("Erro de conexão (serviços):", error);
     } finally {
-        loadingServices = false;
+      loadingServices = false;
     }
   }
 
@@ -137,23 +145,25 @@
     editCpf = provider.cpf || "";
     editTelefone = provider.telefone || "";
     editEmail = provider.email || "";
-    
+
     // Reset service IDs
     editServiceIds = [];
 
     // Map existing services to IDs
     if (provider.catalogo && Array.isArray(provider.catalogo)) {
-        editServiceIds = provider.catalogo.map((c: any) => c.ID);
+      editServiceIds = provider.catalogo.map((c: any) => c.ID);
     }
 
     // Reset Image
     selectedImage = null;
     imagePreview = provider.foto || null;
-    
+
     showEditModal = true;
   }
 
-  function handleImageSelect(event: CustomEvent<{ file: File; preview: string }>) {
+  function handleImageSelect(
+    event: CustomEvent<{ file: File; preview: string }>,
+  ) {
     selectedImage = event.detail.file;
     imagePreview = event.detail.preview;
   }
@@ -165,7 +175,7 @@
 
   function toggleService(serviceId: string) {
     if (editServiceIds.includes(serviceId)) {
-      editServiceIds = editServiceIds.filter(id => id !== serviceId);
+      editServiceIds = editServiceIds.filter((id) => id !== serviceId);
     } else {
       editServiceIds = [...editServiceIds, serviceId];
     }
@@ -176,127 +186,153 @@
 
     // --- Validation ---
     if (!editNome || editNome.trim().length < 3) {
-        showAlert("Atenção", "O nome deve ter no mínimo 3 caracteres.", "warning");
-        return;
+      showAlert(
+        "Atenção",
+        "O nome deve ter no mínimo 3 caracteres.",
+        "warning",
+      );
+      return;
     }
     if (editNome.trim().length > 100) {
-        showAlert("Atenção", "O nome deve ter no máximo 100 caracteres.", "warning");
-        return;
+      showAlert(
+        "Atenção",
+        "O nome deve ter no máximo 100 caracteres.",
+        "warning",
+      );
+      return;
     }
 
     // Email
     if (!editEmail || editEmail.trim() === "") {
-        showAlert("Atenção", "O email é obrigatório.", "warning");
-        return;
+      showAlert("Atenção", "O email é obrigatório.", "warning");
+      return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(editEmail)) {
-        showAlert("Atenção", "Por favor, insira um email válido.", "warning");
-        return;
+      showAlert("Atenção", "Por favor, insira um email válido.", "warning");
+      return;
     }
 
     // Telefone
     const phoneDigits = editTelefone.replace(/\D/g, "");
     if (!phoneDigits || phoneDigits.length < 8) {
-        showAlert("Atenção", "O telefone deve ter no mínimo 8 dígitos.", "warning");
-        return;
+      showAlert(
+        "Atenção",
+        "O telefone deve ter no mínimo 8 dígitos.",
+        "warning",
+      );
+      return;
     }
-     if (phoneDigits.length > 15) {
-        showAlert("Atenção", "O telefone deve ter no máximo 15 dígitos.", "warning");
-        return;
+    if (phoneDigits.length > 15) {
+      showAlert(
+        "Atenção",
+        "O telefone deve ter no máximo 15 dígitos.",
+        "warning",
+      );
+      return;
     }
 
     // Validação de Serviços (Pelo menos um)
     if (editServiceIds.length === 0) {
-        showAlert("Atenção", "O prestador deve ter no mínimo um serviço atribuído.", "warning");
-        return;
+      showAlert(
+        "Atenção",
+        "O prestador deve ter no mínimo um serviço atribuído.",
+        "warning",
+      );
+      return;
     }
 
     // Photo is strictly strictly required? Registration says yes. Edit might be 'keep existing'.
     // Logic below: use existing URL unless new image uploaded.
-    
+
     isSaving = true;
 
-    let imageUrl = editingProvider.foto || ""; 
+    let imageUrl = editingProvider.foto || "";
 
     // Upload new image if selected
     if (selectedImage) {
-        try {
-            const uploadedUrl = await uploadPrestadorImageToSupabase(selectedImage);
-            if (uploadedUrl) {
-                imageUrl = uploadedUrl;
-            } else {
-                showAlert("Erro", "Erro ao fazer upload da imagem.", "error");
-                isSaving = false;
-                return;
-            }
-        } catch (error) {
-            console.error(error);
-            showAlert("Erro", "Erro ao fazer upload da imagem.", "error");
-            isSaving = false;
-            return;
+      try {
+        const uploadedUrl = await uploadPrestadorImageToSupabase(selectedImage);
+        if (uploadedUrl) {
+          imageUrl = uploadedUrl;
+        } else {
+          showAlert("Erro", "Erro ao fazer upload da imagem.", "error");
+          isSaving = false;
+          return;
         }
+      } catch (error) {
+        console.error(error);
+        showAlert("Erro", "Erro ao fazer upload da imagem.", "error");
+        isSaving = false;
+        return;
+      }
     }
 
     const payload = {
-        catalogo_ids: editServiceIds,
-        email: editEmail.trim(),
-        image_url: imageUrl,
-        nome: editNome.trim(),
-        telefone: phoneDigits
+      catalogo_ids: editServiceIds,
+      email: editEmail.trim(),
+      image_url: imageUrl,
+      nome: editNome.trim(),
+      telefone: phoneDigits,
     };
 
     try {
-        const res = await fetch(`/api/v1/prestadores/${editingProvider.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+      const res = await fetch(`/api/v1/prestadores/${editingProvider.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-        if (res.ok) {
-            showAlert("Sucesso", "Prestador atualizado com sucesso!", "success", false, () => {
-                 // Check if we need to delete the old image
-                 // Only delete if a new image was uploaded (selectedImage exists)
-                 // AND there was an old image
-                 // AND the new URL is different from the old one (to avoid deleting just-uploaded same image)
-                 const oldImageUrl = editingProvider?.foto;
-                 if (selectedImage && oldImageUrl && oldImageUrl !== imageUrl) {
-                     console.log("Deleting old provider image:", oldImageUrl);
-                     // Fire and forget, don't await/block UI
-                     deleteImageFromSupabase(oldImageUrl).then(success => {
-                        if (!success) console.warn("Failed to delete old image in background");
-                     });
-                 }
+      if (res.ok) {
+        showAlert(
+          "Sucesso",
+          "Prestador atualizado com sucesso!",
+          "success",
+          false,
+          () => {
+            // Check if we need to delete the old image
+            // Only delete if a new image was uploaded (selectedImage exists)
+            // AND there was an old image
+            // AND the new URL is different from the old one (to avoid deleting just-uploaded same image)
+            const oldImageUrl = editingProvider?.foto;
+            if (selectedImage && oldImageUrl && oldImageUrl !== imageUrl) {
+              console.log("Deleting old provider image:", oldImageUrl);
+              // Fire and forget, don't await/block UI
+              deleteImageFromSupabase(oldImageUrl).then((success) => {
+                if (!success)
+                  console.warn("Failed to delete old image in background");
+              });
+            }
 
-                 alertState.show = false;
-                 showEditModal = false;
-                 fetchProviders(); // Refresh list to show changes
-            });
-        } else {
-             const text = await res.text();
-             console.error("Erro ao atualizar prestador:", text);
-             showAlert("Erro", "Falha ao atualizar prestador.", "error");
-        }
-
+            alertState.show = false;
+            showEditModal = false;
+            fetchProviders(); // Refresh list to show changes
+          },
+        );
+      } else {
+        const text = await res.text();
+        console.error("Erro ao atualizar prestador:", text);
+        showAlert("Erro", "Falha ao atualizar prestador.", "error");
+      }
     } catch (error) {
-        console.error("Erro de conexão ao atualizar:", error);
-        showAlert("Erro", "Erro de conexão ao atualizar prestador.", "error");
+      console.error("Erro de conexão ao atualizar:", error);
+      showAlert("Erro", "Erro de conexão ao atualizar prestador.", "error");
     } finally {
-        isSaving = false;
+      isSaving = false;
     }
   }
 
   function changePage(newPage: number) {
-      if (newPage >= 1 && newPage <= totalPages) {
-          page = newPage;
-          fetchProviders();
-      }
-  }
-  
-  function changeFilter(newFilter: "ativos" | "inativos") {
-      statusFilter = newFilter;
-      page = 1;
+    if (newPage >= 1 && newPage <= totalPages) {
+      page = newPage;
       fetchProviders();
+    }
+  }
+
+  function changeFilter(newFilter: "ativos" | "inativos") {
+    statusFilter = newFilter;
+    page = 1;
+    fetchProviders();
   }
 
   // --- Alert Modal State ---
@@ -345,28 +381,43 @@
       "warning",
       true,
       async () => {
-         try {
-             // Dismiss alert
-             alertState.show = false;
-             
-             const res = await fetch(`/api/v1/prestadores/${provider.id}/${endpoint}`, {
-                 method: 'PUT'
-             });
+        try {
+          // Dismiss alert
+          alertState.show = false;
 
-             if (res.ok) {
-                 // Refresh list to adhere to new filter
-                 fetchProviders();
-                 const successTerm = provider.ativo ? "Inativado" : "Ativado";
-                 showAlert("Sucesso", `Prestador ${successTerm} com sucesso!`, "success");
-             } else {
-                 const text = await res.text();
-                 console.error(`Erro ao ${action.toLowerCase()} prestador:`, text);
-                 showAlert("Erro", `Falha ao ${action.toLowerCase()} prestador.`, "error");
-             }
-         } catch (error) {
-             console.error(`Erro de conexão ao ${action.toLowerCase()}:`, error);
-             showAlert("Erro", `Erro de conexão ao ${action.toLowerCase()} prestador.`, "error");
-         }
+          const res = await fetch(
+            `/api/v1/prestadores/${provider.id}/${endpoint}`,
+            {
+              method: "PUT",
+            },
+          );
+
+          if (res.ok) {
+            // Refresh list to adhere to new filter
+            fetchProviders();
+            const successTerm = provider.ativo ? "Inativado" : "Ativado";
+            showAlert(
+              "Sucesso",
+              `Prestador ${successTerm} com sucesso!`,
+              "success",
+            );
+          } else {
+            const text = await res.text();
+            console.error(`Erro ao ${action.toLowerCase()} prestador:`, text);
+            showAlert(
+              "Erro",
+              `Falha ao ${action.toLowerCase()} prestador.`,
+              "error",
+            );
+          }
+        } catch (error) {
+          console.error(`Erro de conexão ao ${action.toLowerCase()}:`, error);
+          showAlert(
+            "Erro",
+            `Erro de conexão ao ${action.toLowerCase()} prestador.`,
+            "error",
+          );
+        }
       },
     );
   }
@@ -378,33 +429,7 @@
   <Sidebar />
 
   <main class="flex-1 flex flex-col h-full overflow-hidden relative">
-    <header
-      class="h-16 bg-[hsl(var(--bs-card))] border-b border-border-light dark:border-border-dark flex items-center justify-between px-6 z-10"
-    >
-      <div class="flex items-center flex-1 max-w-2xl">
-        <div class="relative w-full">
-          <span
-            class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-          >
-            <span class="material-symbols-outlined text-gray-400">search</span>
-          </span>
-          <input
-            type="text"
-            bind:value={searchQuery}
-            class="block w-full pl-10 pr-3 py-2 border border-border-light dark:border-border-dark rounded-md leading-5 bg-gray-50 dark:bg-[hsl(var(--bs-muted))]/20 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-all"
-            placeholder="Buscar por nome ou especialidade..."
-          />
-        </div>
-      </div>
-      <div class="flex items-center space-x-4 ml-4">
-        <button
-          class="p-2 rounded-full text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none transition-colors"
-        >
-          <span class="material-symbols-outlined">notifications</span>
-        </button>
-        <ThemeToggle />
-      </div>
-    </header>
+    <DashboardNavbar />
 
     <div class="flex-1 overflow-y-auto p-6 md:p-8">
       <div class="max-w-6xl mx-auto space-y-8">
@@ -412,7 +437,9 @@
           <nav class="flex text-sm text-gray-500 dark:text-gray-400 mb-2">
             <a href="/" class="hover:text-primary transition-colors">Início</a>
             <span class="mx-2">/</span>
-            <span class="text-gray-900 dark:text-white font-medium">Equipe de Profissionais</span>
+            <span class="text-gray-900 dark:text-white font-medium"
+              >Equipe de Profissionais</span
+            >
           </nav>
           <div
             class="flex flex-col md:flex-row md:items-center justify-between gap-4"
@@ -464,10 +491,15 @@
         </div>
 
         {#if loadingProviders}
-            <div class="flex justify-center items-center h-64">
-                 <span class="material-symbols-outlined animate-spin text-4xl text-primary">sync</span>
-                 <span class="ml-2 text-gray-500 dark:text-gray-400">Carregando profissionais...</span>
-            </div>
+          <div class="flex justify-center items-center h-64">
+            <span
+              class="material-symbols-outlined animate-spin text-4xl text-primary"
+              >sync</span
+            >
+            <span class="ml-2 text-gray-500 dark:text-gray-400"
+              >Carregando profissionais...</span
+            >
+          </div>
         {:else if providers.length === 0}
           <div
             class="bg-[hsl(var(--bs-card))] rounded-xl border-2 border-dashed border-border-light dark:border-border-dark p-12 text-center"
@@ -475,9 +507,7 @@
             <span class="material-symbols-outlined text-5xl text-gray-300 mb-4"
               >person_search</span
             >
-            <p class="text-gray-500">
-              Nenhum profissional encontrado.
-            </p>
+            <p class="text-gray-500">Nenhum profissional encontrado.</p>
           </div>
         {:else}
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -538,25 +568,33 @@
                   </div>
                   <div class="flex items-center gap-2">
                     <a
-                       href={`/prestadores/${provider.id}`}
-                       class="p-2 text-gray-400 hover:text-blue-500 dark:hover:text-blue-500 transition-colors rounded-lg hover:bg-blue-500/5"
-                       title="Ver Detalhes"
+                      href={`/prestadores/${provider.id}`}
+                      class="p-2 text-gray-400 hover:text-blue-500 dark:hover:text-blue-500 transition-colors rounded-lg hover:bg-blue-500/5"
+                      title="Ver Detalhes"
                     >
-                         <span class="material-symbols-outlined text-[20px]">visibility</span>
+                      <span class="material-symbols-outlined text-[20px]"
+                        >visibility</span
+                      >
                     </a>
                     <button
-                       class="p-2 text-gray-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors rounded-lg hover:bg-brand-orange/5"
-                       title="Editar"
-                       on:click={() => openEditModal(provider)}
+                      class="p-2 text-gray-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors rounded-lg hover:bg-brand-orange/5"
+                      title="Editar"
+                      on:click={() => openEditModal(provider)}
                     >
-                         <span class="material-symbols-outlined text-[20px]">edit</span>
+                      <span class="material-symbols-outlined text-[20px]"
+                        >edit</span
+                      >
                     </button>
                     <button
-                        class="p-2 text-gray-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 {provider.ativo ? 'hover:text-red-500' : 'hover:text-green-500'}"
-                        title={provider.ativo ? "Inativar" : "Ativar"}
-                        on:click={() => handleToggleStatus(provider)}
+                      class="p-2 text-gray-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 {provider.ativo
+                        ? 'hover:text-red-500'
+                        : 'hover:text-green-500'}"
+                      title={provider.ativo ? "Inativar" : "Ativar"}
+                      on:click={() => handleToggleStatus(provider)}
                     >
-                        <span class="material-symbols-outlined text-[20px]">{provider.ativo ? "block" : "check_circle"}</span>
+                      <span class="material-symbols-outlined text-[20px]"
+                        >{provider.ativo ? "block" : "check_circle"}</span
+                      >
                     </button>
                   </div>
                 </div>
@@ -565,67 +603,83 @@
           </div>
 
           <!-- Pagination Controls -->
-          <div class="flex items-center justify-between border-t border-gray-200 dark:border-border-dark bg-[hsl(var(--bs-card))] px-4 py-3 sm:px-6 mt-6 rounded-lg">
-              <div class="flex flex-1 justify-between sm:hidden">
-                  <button
-                      on:click={() => changePage(page - 1)}
-                      disabled={page === 1}
-                      class="relative inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
+          <div
+            class="flex items-center justify-between border-t border-gray-200 dark:border-border-dark bg-[hsl(var(--bs-card))] px-4 py-3 sm:px-6 mt-6 rounded-lg"
+          >
+            <div class="flex flex-1 justify-between sm:hidden">
+              <button
+                on:click={() => changePage(page - 1)}
+                disabled={page === 1}
+                class="relative inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
+              >
+                Anterior
+              </button>
+              <button
+                on:click={() => changePage(page + 1)}
+                disabled={page === totalPages}
+                class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
+              >
+                Próximo
+              </button>
+            </div>
+            <div
+              class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between"
+            >
+              <div>
+                <p class="text-sm text-gray-700 dark:text-gray-300">
+                  Mostrando
+                  <span class="font-medium">{(page - 1) * limit + 1}</span>
+                  a
+                  <span class="font-medium"
+                    >{Math.min(page * limit, totalProviders)}</span
                   >
-                      Anterior
-                  </button>
-                  <button
-                      on:click={() => changePage(page + 1)}
-                      disabled={page === totalPages}
-                      class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
-                  >
-                      Próximo
-                  </button>
+                  de
+                  <span class="font-medium">{totalProviders}</span>
+                  resultados
+                </p>
               </div>
-              <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                  <div>
-                      <p class="text-sm text-gray-700 dark:text-gray-300">
-                          Mostrando
-                          <span class="font-medium">{(page - 1) * limit + 1}</span>
-                          a
-                          <span class="font-medium">{Math.min(page * limit, totalProviders)}</span>
-                          de
-                          <span class="font-medium">{totalProviders}</span>
-                          resultados
-                      </p>
-                  </div>
-                  <div>
-                      <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-                          <button
-                              on:click={() => changePage(page - 1)}
-                              disabled={page === 1}
-                              class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
-                          >
-                              <span class="sr-only">Anterior</span>
-                              <span class="material-symbols-outlined text-sm">chevron_left</span>
-                          </button>
-                          
-                          <!-- Simple page numbers logic -->
-                          {#each Array(totalPages) as _, i}
-                            <button
-                                on:click={() => changePage(i + 1)}
-                                class="relative inline-flex items-center px-4 py-2 text-sm font-semibold {page === i + 1 ? 'z-10 bg-brand-orange text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange' : 'text-gray-900 dark:text-gray-300 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0'}"
-                            >
-                                {i + 1}
-                            </button>
-                          {/each}
+              <div>
+                <nav
+                  class="isolate inline-flex -space-x-px rounded-md shadow-sm"
+                  aria-label="Pagination"
+                >
+                  <button
+                    on:click={() => changePage(page - 1)}
+                    disabled={page === 1}
+                    class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+                  >
+                    <span class="sr-only">Anterior</span>
+                    <span class="material-symbols-outlined text-sm"
+                      >chevron_left</span
+                    >
+                  </button>
 
-                          <button
-                              on:click={() => changePage(page + 1)}
-                              disabled={page === totalPages}
-                              class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
-                          >
-                              <span class="sr-only">Próximo</span>
-                              <span class="material-symbols-outlined text-sm">chevron_right</span>
-                          </button>
-                      </nav>
-                  </div>
+                  <!-- Simple page numbers logic -->
+                  {#each Array(totalPages) as _, i}
+                    <button
+                      on:click={() => changePage(i + 1)}
+                      class="relative inline-flex items-center px-4 py-2 text-sm font-semibold {page ===
+                      i + 1
+                        ? 'z-10 bg-brand-orange text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange'
+                        : 'text-gray-900 dark:text-gray-300 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0'}"
+                    >
+                      {i + 1}
+                    </button>
+                  {/each}
+
+                  <button
+                    on:click={() => changePage(page + 1)}
+                    disabled={page === totalPages}
+                    class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+                  >
+                    <span class="sr-only">Próximo</span>
+                    <span class="material-symbols-outlined text-sm"
+                      >chevron_right</span
+                    >
+                  </button>
+                </nav>
               </div>
+            </div>
           </div>
         {/if}
 
@@ -656,104 +710,137 @@
     on:close={() => (showEditModal = false)}
   >
     <div slot="body" class="space-y-4">
-        <div>
-            <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Foto do Prestador</span>
-            <ImageUpload
-                previewUrl={imagePreview}
-                on:select={handleImageSelect}
-                on:clear={handleImageClear}
-            />
-        </div>
+      <div>
+        <span
+          class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          >Foto do Prestador</span
+        >
+        <ImageUpload
+          previewUrl={imagePreview}
+          on:select={handleImageSelect}
+          on:clear={handleImageClear}
+        />
+      </div>
 
-        <div>
-            <label for="edit-nome" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome Completo</label>
-            <input
-                id="edit-nome"
-                type="text"
-                bind:value={editNome}
-                class="block w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-brand-orange focus:border-brand-orange sm:text-sm"
-                placeholder="Ex: Ana Maria Costa"
-            />
-        </div>
+      <div>
+        <label
+          for="edit-nome"
+          class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          >Nome Completo</label
+        >
+        <input
+          id="edit-nome"
+          type="text"
+          bind:value={editNome}
+          class="block w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-brand-orange focus:border-brand-orange sm:text-sm"
+          placeholder="Ex: Ana Maria Costa"
+        />
+      </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <div>
-                <label for="edit-cpf" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CPF</label>
-                <input
-                    id="edit-cpf"
-                    type="text"
-                    bind:value={editCpf}
-                    disabled
-                    class="block w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 focus:ring-brand-orange focus:border-brand-orange sm:text-sm cursor-not-allowed"
-                    placeholder="000.000.000-00"
-                />
-            </div>
-            <div>
-                <label for="edit-telefone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Telefone / WhatsApp</label>
-                <input
-                    id="edit-telefone"
-                    type="text"
-                    bind:value={editTelefone}
-                    class="block w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-brand-orange focus:border-brand-orange sm:text-sm"
-                    placeholder="(00) 00000-0000"
-                />
-            </div>
-        </div>
-
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-            <label for="edit-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Endereço de Email</label>
-            <input
-                id="edit-email"
-                type="email"
-                bind:value={editEmail}
-                class="block w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-brand-orange focus:border-brand-orange sm:text-sm"
-                placeholder="prestador@bellavita.com"
-            />
+          <label
+            for="edit-cpf"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >CPF</label
+          >
+          <input
+            id="edit-cpf"
+            type="text"
+            bind:value={editCpf}
+            disabled
+            class="block w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 focus:ring-brand-orange focus:border-brand-orange sm:text-sm cursor-not-allowed"
+            placeholder="000.000.000-00"
+          />
         </div>
-
         <div>
-            <h3 class="flex items-center text-sm font-bold text-gray-900 dark:text-white mb-3">
-                <span class="material-symbols-outlined text-brand-orange mr-2">spa</span>
-                Serviços Atribuídos
-            </h3>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Selecione todos os serviços que este profissional está qualificado para realizar.</p>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-40 overflow-y-auto p-1">
-                {#each availableServices as service}
-                    <button
-                        type="button"
-                        class="flex items-center justify-between p-3 rounded-lg border transition-all text-left group
-                        {editServiceIds.includes(service.ID) 
-                            ? 'bg-brand-orange/10 border-brand-orange text-brand-orange' 
-                            : 'bg-gray-50 dark:bg-gray-800 border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:border-brand-orange/50'}"
-                        on:click={() => toggleService(service.ID)}
-                    >
-                        <span class="text-sm font-medium">{service.Nome}</span>
-                        {#if editServiceIds.includes(service.ID)}
-                            <span class="material-symbols-outlined text-edit-check text-lg">check_circle</span>
-                        {:else}
-                            <span class="material-symbols-outlined text-gray-300 group-hover:text-gray-400 text-lg">radio_button_unchecked</span>
-                        {/if}
-                    </button>
-                {/each}
-            </div>
+          <label
+            for="edit-telefone"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >Telefone / WhatsApp</label
+          >
+          <input
+            id="edit-telefone"
+            type="text"
+            bind:value={editTelefone}
+            class="block w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-brand-orange focus:border-brand-orange sm:text-sm"
+            placeholder="(00) 00000-0000"
+          />
         </div>
+      </div>
+
+      <div>
+        <label
+          for="edit-email"
+          class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          >Endereço de Email</label
+        >
+        <input
+          id="edit-email"
+          type="email"
+          bind:value={editEmail}
+          class="block w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-brand-orange focus:border-brand-orange sm:text-sm"
+          placeholder="prestador@bellavita.com"
+        />
+      </div>
+
+      <div>
+        <h3
+          class="flex items-center text-sm font-bold text-gray-900 dark:text-white mb-3"
+        >
+          <span class="material-symbols-outlined text-brand-orange mr-2"
+            >spa</span
+          >
+          Serviços Atribuídos
+        </h3>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+          Selecione todos os serviços que este profissional está qualificado
+          para realizar.
+        </p>
+
+        <div
+          class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-40 overflow-y-auto p-1"
+        >
+          {#each availableServices as service}
+            <button
+              type="button"
+              class="flex items-center justify-between p-3 rounded-lg border transition-all text-left group
+                        {editServiceIds.includes(service.ID)
+                ? 'bg-brand-orange/10 border-brand-orange text-brand-orange'
+                : 'bg-gray-50 dark:bg-gray-800 border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 hover:border-brand-orange/50'}"
+              on:click={() => toggleService(service.ID)}
+            >
+              <span class="text-sm font-medium">{service.Nome}</span>
+              {#if editServiceIds.includes(service.ID)}
+                <span class="material-symbols-outlined text-edit-check text-lg"
+                  >check_circle</span
+                >
+              {:else}
+                <span
+                  class="material-symbols-outlined text-gray-300 group-hover:text-gray-400 text-lg"
+                  >radio_button_unchecked</span
+                >
+              {/if}
+            </button>
+          {/each}
+        </div>
+      </div>
     </div>
 
     <div slot="footer">
-        <button
-            on:click={() => (showEditModal = false)}
-            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-        >
-            Cancelar
-        </button>
-        <button
-            on:click={handleUpdate}
-            disabled={isSaving}
-            class="px-4 py-2 text-sm font-medium text-white bg-brand-orange rounded-md hover:bg-brand-orange-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange disabled:opacity-50 transition-colors"
-        >
-            {isSaving ? "Salvando..." : "Salvar Alterações"}
-        </button>
+      <button
+        on:click={() => (showEditModal = false)}
+        class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+      >
+        Cancelar
+      </button>
+      <button
+        on:click={handleUpdate}
+        disabled={isSaving}
+        class="px-4 py-2 text-sm font-medium text-white bg-brand-orange rounded-md hover:bg-brand-orange-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange disabled:opacity-50 transition-colors"
+      >
+        {isSaving ? "Salvando..." : "Salvar Alterações"}
+      </button>
     </div>
   </Modal>
 </div>

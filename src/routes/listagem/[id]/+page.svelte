@@ -1,6 +1,6 @@
 <script lang="ts">
     import Sidebar from "$lib/components/Sidebar.svelte";
-    import ThemeToggle from "$lib/components/ThemeToggle.svelte";
+    import DashboardNavbar from "$lib/components/DashboardNavbar.svelte";
     import { page } from "$app/stores";
     import { onMount } from "svelte";
 
@@ -81,32 +81,12 @@
 </script>
 
 <div
-    class="font-body bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark antialiased h-screen flex overflow-hidden transition-colors duration-200"
+    class="font-body bg-[hsl(var(--bs-background))] text-text-light dark:text-text-dark antialiased h-screen flex overflow-hidden transition-colors duration-200"
 >
     <Sidebar />
 
     <main class="flex-1 flex flex-col h-full overflow-hidden relative">
-        <header
-            class="h-16 bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark flex items-center justify-between px-6 z-10"
-        >
-            <div class="flex items-center">
-                <a
-                    href="/catalogo/listagem"
-                    class="flex items-center text-gray-500 hover:text-brand-orange transition-colors group"
-                >
-                    <span
-                        class="material-symbols-outlined mr-2 group-hover:-translate-x-1 transition-transform"
-                        >arrow_back</span
-                    >
-                    <span class="hidden sm:inline font-medium"
-                        >Voltar para o catálogo</span
-                    >
-                </a>
-            </div>
-            <div class="flex items-center space-x-4">
-                <ThemeToggle />
-            </div>
-        </header>
+        <DashboardNavbar />
 
         <div class="flex-1 overflow-y-auto p-6 md:p-8">
             {#if loading}
@@ -148,7 +128,7 @@
 
                     <!-- Service Hero Card -->
                     <div
-                        class="bg-surface-light dark:bg-surface-dark rounded-3xl shadow-xl border border-border-light dark:border-border-dark overflow-hidden transition-all duration-300"
+                        class="bg-[hsl(var(--bs-card))] rounded-3xl shadow-xl border border-border-light dark:border-border-dark overflow-hidden transition-all duration-300"
                     >
                         <div
                             class="relative h-64 sm:h-80 bg-gray-200 dark:bg-gray-800"

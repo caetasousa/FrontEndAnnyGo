@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import Sidebar from "$lib/components/Sidebar.svelte";
-    import ThemeToggle from "$lib/components/ThemeToggle.svelte";
+    import DashboardNavbar from "$lib/components/DashboardNavbar.svelte";
 
     interface Service {
         ID: string;
@@ -162,52 +162,7 @@
     <div class="flex h-screen overflow-hidden">
         <Sidebar />
         <main class="flex-1 flex flex-col h-full overflow-hidden relative">
-            <header
-                class="h-16 bg-[hsl(var(--bs-card))] border-b border-border-light dark:border-border-dark flex items-center justify-between px-6 flex-shrink-0 z-10"
-            >
-                <div class="flex items-center flex-1 max-w-2xl gap-4">
-                    <div class="relative w-full">
-                        <div
-                            class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-                        >
-                            <span class="material-icons-outlined text-gray-400"
-                            ></span>
-                        </div>
-                        <input
-                            class="block w-full pl-10 pr-4 py-2 rounded-lg bg-gray-100 dark:bg-[hsl(var(--bs-muted))]/20 border-transparent focus:border-primary focus:bg-white dark:focus:bg-gray-700 text-sm text-gray-900 dark:text-white focus:ring-0 placeholder-gray-500 dark:placeholder-gray-400 transition-colors"
-                            placeholder="Busque por serviço, profissional ou categoria..."
-                            type="text"
-                        />
-                    </div>
-                    <button
-                        class="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg md:hidden"
-                    >
-                        <span class="material-symbols-outlined"
-                            >filter_list</span
-                        >
-                    </button>
-                </div>
-                <div class="flex items-center gap-4 ml-4">
-                    <ThemeToggle />
-                    <button
-                        class="relative p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-                    >
-                        <span class="material-symbols-outlined"
-                            >notifications</span
-                        >
-                        <span
-                            class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"
-                        ></span>
-                    </button>
-                    <button class="flex items-center gap-2">
-                        <img
-                            alt="User Profile"
-                            class="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700 object-cover"
-                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZTw1c-yjUq0YdRFLzOa9lzVbwYTsa0rNBJ0iRXfdJ0ucz-g-ytvtpjP6RPDojxo_sQXfIiw2eyo93E14KXTSBt1M_cuMT-_Vvy-I32S-_BICwkdyojVRCd6cmDn0ZRCZ6geIZ4ikx5I8DhWDLBqyuzo0INYKJzNqOhVsFDj33UJQR41oZwdquJz_zmNif-VryEH7kVcG3X_oksqUjpDkqvYDkIy1kjwfL5m8Yf9t-uw19MQZuPLYTlNarjeii1eJ-ElptwMvmlmU"
-                        />
-                    </button>
-                </div>
-            </header>
+            <DashboardNavbar />
             <div class="flex-1 overflow-y-auto p-6 md:p-8">
                 <div
                     class="relative rounded-2xl overflow-hidden bg-gradient-to-r from-orange-500 to-amber-600 dark:from-orange-600 dark:to-amber-800 shadow-lg mb-10 text-white"
@@ -320,8 +275,9 @@
                             class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
                         >
                             {#each featuredServices as service}
-                                <div
-                                    class="group bg-[hsl(var(--bs-card))] rounded-xl border border-border-light dark:border-border-dark overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col"
+                                <a
+                                    href="/listagem/{service.ID}"
+                                    class="group bg-[hsl(var(--bs-card))] rounded-xl border border-border-light dark:border-border-dark overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col cursor-pointer"
                                 >
                                     <div class="relative h-48 overflow-hidden">
                                         {#if service.ImagemUrl}
@@ -367,32 +323,34 @@
                                             Duração: {service.DuracaoPadrao} minutos
                                         </p>
                                         <div
-                                            class="mt-auto flex items-center justify-between pt-4 border-t border-border-light dark:border-border-dark"
+                                            class="mt-auto flex flex-col gap-3 pt-4 border-t border-border-light dark:border-border-dark"
                                         >
-                                            <div>
-                                                <span
-                                                    class="text-xs text-gray-400 block"
-                                                    >A partir de</span
-                                                >
-                                                <span
-                                                    class="text-lg font-bold text-gray-900 dark:text-white"
-                                                    >R$ {formatPrice(
-                                                        service.Preco,
-                                                    )}</span
-                                                >
+                                            <div class="flex items-center justify-between">
+                                                <div>
+                                                    <span
+                                                        class="text-xs text-gray-400 block"
+                                                        >A partir de</span
+                                                    >
+                                                    <span
+                                                        class="text-lg font-bold text-gray-900 dark:text-white"
+                                                        >R$ {formatPrice(
+                                                            service.Preco,
+                                                        )}</span
+                                                    >
+                                                </div>
                                             </div>
-                                            <a
-                                                href="/listagem/{service.ID}"
-                                                class="p-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-primary hover:text-white dark:hover:bg-primary dark:hover:text-white transition-colors inline-flex items-center justify-center"
+                                            <button
+                                                on:click|preventDefault|stopPropagation={() => window.location.href = `/clientes/agendamento?serviceId=${service.ID}`}
+                                                class="w-full px-4 py-2.5 bg-brand-orange hover:bg-brand-orange-hover text-white rounded-lg font-semibold shadow-md transition-all duration-200 flex items-center justify-center gap-2 group-hover:shadow-lg active:scale-95"
                                             >
-                                                <span
-                                                    class="material-symbols-outlined"
-                                                    >arrow_forward</span
-                                                >
-                                            </a>
+                                                <span class="material-symbols-outlined text-[18px]">
+                                                    event_available
+                                                </span>
+                                                Agendar Agora
+                                            </button>
                                         </div>
                                     </div>
-                                </div>
+                                </a>
                             {/each}
                         </div>
                     {/if}
