@@ -1048,10 +1048,9 @@
                                                     class="absolute inset-x-1 bottom-1 flex flex-col items-center"
                                                 >
                                                     {#if isSunday && !isPast}
-                                                        <span
-                                                            class="text-[10px] font-bold text-red-500 uppercase tracking-tight truncate w-full"
-                                                            >Folga</span
-                                                        >
+                                                        <div
+                                                            class="w-1.5 h-1.5 rounded-full  bg-red-500 mb-0.5"
+                                                        ></div>
                                                     {:else if isSaturday && !isPast}
                                                         <div
                                                             class="w-1.5 h-1.5 rounded-full bg-orange-400 mb-0.5"

@@ -107,11 +107,33 @@
             Conta
         </h3>
         <a
-            class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:bg-brand-orange/10 hover:text-brand-orange transition-all duration-200"
+            class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {isActive(
+                '/meus-dados',
+            )
+                ? 'bg-brand-orange/10 text-brand-orange'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-brand-orange/10 hover:text-brand-orange'}"
+            href="/meus-dados"
+        >
+            <span
+                class="material-symbols-outlined mr-3 {isActive('/meus-dados')
+                    ? 'text-brand-orange'
+                    : 'text-gray-400 group-hover:text-brand-orange transition-colors'}"
+                >person</span
+            >
+            Meus Dados
+        </a>
+        <a
+            class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {isActive(
+                '/perfil',
+            )
+                ? 'bg-brand-orange/10 text-brand-orange'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-brand-orange/10 hover:text-brand-orange'}"
             href="/perfil"
         >
             <span
-                class="material-symbols-outlined mr-3 text-gray-400 group-hover:text-brand-orange transition-colors"
+                class="material-symbols-outlined mr-3 {isActive('/perfil')
+                    ? 'text-brand-orange'
+                    : 'text-gray-400 group-hover:text-brand-orange transition-colors'}"
                 >settings</span
             >
             Configurações
