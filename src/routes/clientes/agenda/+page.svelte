@@ -6,46 +6,75 @@
     // Types
     interface Appointment {
         id: string;
-        data: string;
-        hora_inicio: string;
-        hora_fim: string;
-        status: "pendente" | "confirmado" | "cancelado" | "concluido";
-        cliente_id: string;
-        cliente_nome?: string;
-        prestador_id: string;
-        servico_id: string;
-        servico_nome?: string;
-        duracao?: number;
-        preco?: number;
-        servico?: {
+        data: string; // YYYY-MM-DD
+        data_inicio: string; // ISO
+        data_fim: string; // ISO
+        hora_inicio: string; // HH:mm:ss
+        hora_fim: string; // HH:mm:ss
+        status: string | number;
+        notas?: string;
+        cliente: {
+            id: string;
             nome: string;
+            email: string;
+            telefone: string;
+        };
+        prestador: {
+            id: string;
+            nome: string;
+            cpf: string;
+            email: string;
+            telefone: string;
+            ativo: boolean;
+        };
+        servico: {
+            id: string;
+            nome: string;
+            duracao: number;
+            preco: number;
+            categoria: string;
         };
     }
 
     interface Stats {
-        hoje: number;
+        total: number;
         pendentes: number;
         confirmados: number;
-        receitaHoje: number;
+        concluidos: number;
     }
 
     // State
-    let providerId = "d5dtvusb85jv9boc1cb0"; // Fixed ID
+    const clientId = "d5du4rcb85jv9boc1ch0"; // Fixed ID
     let appointments: Appointment[] = [];
     let todayAppointments: Appointment[] = [];
     let stats: Stats = {
-        hoje: 0,
+        total: 0,
         pendentes: 0,
         confirmados: 0,
-        receitaHoje: 0,
+        concluidos: 0,
     };
     let loading = true;
 
     // Calendar state
     let selectedDate = new Date();
-
     let currentMonth = selectedDate.getMonth();
     let currentYear = selectedDate.getFullYear();
+
+    // Monthly Grid Logic
+    $: daysInCurrentMonth = new Date(
+        currentYear,
+        currentMonth + 1,
+        0,
+    ).getDate();
+    $: firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
+
+    // Create array of days for grid (padding empty slots)
+    // 0 = null padding, number = day of month
+    $: calendarDays = [
+        ...Array(firstDayOfWeek).fill(null),
+        ...Array.from({ length: daysInCurrentMonth }, (_, i) => i + 1),
+    ];
+
     const monthNames = [
         "Janeiro",
         "Fevereiro",
@@ -62,16 +91,7 @@
     ];
     const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
-    // Get today's date in YYYY-MM-DD format
-    function getTodayDateString(): string {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, "0");
-        const day = String(today.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
-    }
-
-    // Format date to YYYY-MM-DD
+    // Utilities
     function formatDateString(date: Date): string {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -79,70 +99,26 @@
         return `${year}-${month}-${day}`;
     }
 
-    // Check if date is today
     function isToday(date: Date): boolean {
         const today = new Date();
         return formatDateString(date) === formatDateString(today);
     }
 
-    // Check if date is selected
-    function isSelectedDate(date: Date, selected: Date): boolean {
-        return formatDateString(date) === formatDateString(selected);
-    }
-
-    // Check if date is in the past
-    function isPastDate(date: Date): boolean {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const checkDate = new Date(date);
-        checkDate.setHours(0, 0, 0, 0);
-        return checkDate < today;
-    }
-
-    // Calendar logic
-    $: daysInCurrentMonth = new Date(
-        currentYear,
-        currentMonth + 1,
-        0,
-    ).getDate();
-    $: firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
-
-    $: calendarDays = (() => {
-        const days = [];
-        for (let i = 0; i < firstDayOfWeek; i++) {
-            days.push(null);
-        }
-        for (let i = 1; i <= daysInCurrentMonth; i++) {
-            days.push(i);
-        }
-        return days;
-    })();
-
+    // Navigation
     function changeMonth(step: number) {
-        let newMonth = currentMonth + step;
-        let newYear = currentYear;
-
-        if (newMonth > 11) {
-            newMonth = 0;
-            newYear++;
-        } else if (newMonth < 0) {
-            newMonth = 11;
-            newYear--;
+        currentMonth += step;
+        if (currentMonth > 11) {
+            currentMonth = 0;
+            currentYear++;
+        } else if (currentMonth < 0) {
+            currentMonth = 11;
+            currentYear--;
         }
-
-        currentMonth = newMonth;
-        currentYear = newYear;
     }
 
     function selectDate(day: number) {
         if (!day) return;
         const newDate = new Date(currentYear, currentMonth, day);
-
-        // Calendar Helper to check past date
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (newDate < today) return;
-
         selectedDate = newDate;
         fetchAppointmentsForDate(newDate);
     }
@@ -161,52 +137,40 @@
     function isTodayDay(day: number): boolean {
         if (!day) return false;
         const checkDate = new Date(currentYear, currentMonth, day);
-        const today = new Date();
-        return formatDateString(checkDate) === formatDateString(today);
+        return isToday(checkDate);
     }
 
-    // Fetch appointments for today
-    async function fetchTodayAppointments() {
-        const today = new Date();
-        await fetchAppointmentsForDate(today);
-    }
-
-    // Fetch appointments for a specific date
+    // API
     async function fetchAppointmentsForDate(date: Date) {
         loading = true;
         try {
             const dateStr = formatDateString(date);
             const response = await fetch(
-                `/api/v1/agendamentos/prestador/${providerId}?data=${dateStr}`,
+                `/api/v1/agendamentos/cliente/${clientId}?data=${dateStr}`,
             );
 
             if (response.ok) {
                 const json = await response.json();
-                const rawData = Array.isArray(json.data)
-                    ? json.data
-                    : Array.isArray(json)
-                      ? json
-                      : [];
+                const rawData = Array.isArray(json.data) ? json.data : [];
 
                 appointments = rawData.map((item: any) => {
-                    let data = item.data;
-                    let hora_inicio = item.hora_inicio;
-                    let hora_fim = item.hora_fim;
-                    let status = item.status;
+                    let data = item.data; // Usually undefined in payload, derive from timestamps
 
                     // Normalize Dates & Times from ISO
+                    // item.data_inicio: "2026-01-06T08:00:00Z"
                     if (!data && item.data_inicio) {
                         data = item.data_inicio.split("T")[0];
                     }
-                    if (!hora_inicio && item.data_inicio) {
-                        hora_inicio = item.data_inicio
-                            .split("T")[1]
-                            .substring(0, 8); // hh:mm:ss
-                    }
-                    if (!hora_fim && item.data_fim) {
-                        hora_fim = item.data_fim.split("T")[1].substring(0, 8);
-                    }
 
+                    const hora_inicio = item.data_inicio
+                        ? item.data_inicio.split("T")[1].substring(0, 5)
+                        : "00:00";
+
+                    const hora_fim = item.data_fim
+                        ? item.data_fim.split("T")[1].substring(0, 5)
+                        : "00:00";
+
+                    let status = item.status;
                     // Normalize Status (Number -> String)
                     if (typeof status === "number") {
                         const statusMap: Record<number, string> = {
@@ -227,12 +191,11 @@
                     };
                 });
 
-                // Filter for selected date's appointments
+                // Filter? API usually filters by date, but double check
                 todayAppointments = appointments.filter(
                     (apt) => apt.data === dateStr,
                 );
 
-                // Calculate stats (only for today)
                 calculateStats();
             } else {
                 console.error("Failed to fetch appointments");
@@ -248,31 +211,43 @@
         }
     }
 
-    // Calculate statistics
     function calculateStats() {
-        const today = getTodayDateString();
-        const todayApts = appointments.filter((apt) => apt.data === today);
-
-        stats.hoje = todayApts.length;
-        stats.pendentes = todayApts.filter(
-            (apt) => apt.status === "pendente",
+        // This stats logic might need adjustment if api returns only one day.
+        // For now, let's just count what we have for the current view (day).
+        // Real-world, you might want a separate endpoint for monthly stats.
+        stats.total = todayAppointments.length;
+        stats.pendentes = todayAppointments.filter(
+            (a) => a.status === "pendente",
         ).length;
-        stats.confirmados = todayApts.filter(
-            (apt) => apt.status === "confirmado",
+        stats.confirmados = todayAppointments.filter(
+            (a) => a.status === "confirmado",
         ).length;
-        stats.receitaHoje =
-            todayApts
-                .filter((apt) => apt.status !== "cancelado")
-                .reduce((sum, apt) => sum + (apt.preco || 0), 0) / 100; // Convert from cents
+        stats.concluidos = todayAppointments.filter(
+            (a) => a.status === "concluido",
+        ).length;
     }
 
-    // Format time from HH:MM:SS to HH:MM
-    function formatTime(time: string): string {
-        if (!time) return "";
-        return time.substring(0, 5);
+    async function cancelAppointment(appointmentId: string) {
+        if (!confirm("Tem certeza que deseja cancelar este agendamento?"))
+            return;
+
+        try {
+            const response = await fetch(
+                `/api/v1/agendamentos/${appointmentId}/cancelar`,
+                { method: "PUT" },
+            );
+
+            if (response.ok) {
+                await fetchAppointmentsForDate(selectedDate); // Refresh
+            } else {
+                alert("Erro ao cancelar agendamento");
+            }
+        } catch (error) {
+            console.error("Error canceling:", error);
+        }
     }
 
-    // Get status label
+    // Formatting
     function getStatusLabel(status: string): string {
         const labels: Record<string, string> = {
             pendente: "Aguardando Confirmação",
@@ -283,7 +258,6 @@
         return labels[status] || status;
     }
 
-    // Get status color classes
     function getStatusClasses(status: string) {
         const classes: Record<
             string,
@@ -317,59 +291,22 @@
         return classes[status] || classes.pendente;
     }
 
-    // Confirm appointment
-    async function confirmAppointment(appointmentId: string) {
-        try {
-            const response = await fetch(
-                `/api/v1/agendamentos/${appointmentId}/confirmar`,
-                {
-                    method: "PUT",
-                },
-            );
-
-            if (response.ok) {
-                await fetchTodayAppointments(); // Refresh data
-            } else {
-                console.error("Failed to confirm appointment");
-            }
-        } catch (error) {
-            console.error("Error confirming appointment:", error);
-        }
-    }
-
-    // Cancel appointment
-    async function cancelAppointment(appointmentId: string) {
-        try {
-            const response = await fetch(
-                `/api/v1/agendamentos/${appointmentId}/cancelar`,
-                {
-                    method: "PUT",
-                },
-            );
-
-            if (response.ok) {
-                await fetchTodayAppointments(); // Refresh data
-            } else {
-                console.error("Failed to cancel appointment");
-            }
-        } catch (error) {
-            console.error("Error canceling appointment:", error);
-        }
-    }
-
     onMount(() => {
-        fetchTodayAppointments();
+        fetchAppointmentsForDate(selectedDate);
     });
 </script>
 
 <div
     class="font-body bg-[hsl(var(--bs-background))] text-text-light dark:text-text-dark antialiased h-screen flex overflow-hidden transition-colors duration-200"
 >
+    <!-- Assuming Client also has sidebar? Or maybe a different layout. 
+         Using standard Sidebar for now based on request to be "simiar". -->
     <Sidebar />
     <main class="flex-1 flex flex-col h-full overflow-hidden relative">
         <DashboardNavbar />
         <div class="flex-1 overflow-y-auto p-6 md:p-8">
             <div class="max-w-6xl mx-auto space-y-6">
+                <!-- Header -->
                 <div
                     class="flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
@@ -377,47 +314,35 @@
                         <nav
                             class="flex text-sm text-gray-500 dark:text-gray-400 mb-2"
                         >
-                            <a
-                                class="hover:text-primary transition-colors"
-                                href="/agenda">Painel</a
-                            >
-                            <span class="mx-2">/</span>
                             <span
-                                class="text-gray-900 dark:text-white font-medium"
-                                >Agenda</span
+                                class="hover:text-primary transition-colors cursor-pointer"
+                                >Meus Agendamentos</span
                             >
                         </nav>
                         <h1
                             class="text-2xl font-bold text-gray-900 dark:text-white"
                         >
-                            Agenda de Atendimentos
+                            Minha Agenda
                         </h1>
                         <p class="text-gray-500 dark:text-gray-400 mt-1">
-                            Gerencie seus próximos atendimentos e solicitações.
+                            Acompanhe seus horários marcados.
                         </p>
                     </div>
-                    <div class="flex space-x-3">
-                        <button
-                            class="flex items-center px-4 py-2 bg-white dark:bg-[hsl(var(--bs-card))] border border-border-light dark:border-border-dark rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    <button
+                        class="flex items-center px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-md text-sm font-medium shadow-md transition-colors"
+                        on:click={() => {
+                            /* Navigate to booking flow? */
+                        }}
+                    >
+                        <span class="material-symbols-outlined text-[20px] mr-2"
+                            >add</span
                         >
-                            <span
-                                class="material-symbols-outlined text-[20px] mr-2"
-                                >filter_list</span
-                            >
-                            Filtrar
-                        </button>
-                        <button
-                            class="flex items-center px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-md text-sm font-medium shadow-md transition-colors"
-                        >
-                            <span
-                                class="material-symbols-outlined text-[20px] mr-2"
-                                >add</span
-                            >
-                            Novo Agendamento
-                        </button>
-                    </div>
+                        Novo Agendamento
+                    </button>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+                <!-- Stats Cards (Simplified for Client) -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div
                         class="bg-[hsl(var(--bs-card))] p-4 rounded-lg shadow-sm border border-border-light dark:border-border-dark flex items-center"
                     >
@@ -430,12 +355,12 @@
                         </div>
                         <div>
                             <p class="text-sm text-gray-500 dark:text-gray-400">
-                                Hoje
+                                Total (Dia)
                             </p>
                             <p
                                 class="text-2xl font-bold text-gray-900 dark:text-white"
                             >
-                                {stats.hoje}
+                                {stats.total}
                             </p>
                         </div>
                     </div>
@@ -446,7 +371,7 @@
                             class="p-3 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 mr-4"
                         >
                             <span class="material-symbols-outlined"
-                                >pending</span
+                                >hourglass_top</span
                             >
                         </div>
                         <div>
@@ -460,60 +385,17 @@
                             </p>
                         </div>
                     </div>
-                    <div
-                        class="bg-[hsl(var(--bs-card))] p-4 rounded-lg shadow-sm border border-border-light dark:border-border-dark flex items-center"
-                    >
-                        <div
-                            class="p-3 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 mr-4"
-                        >
-                            <span class="material-symbols-outlined"
-                                >check_circle</span
-                            >
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">
-                                Confirmados
-                            </p>
-                            <p
-                                class="text-2xl font-bold text-gray-900 dark:text-white"
-                            >
-                                {stats.confirmados}
-                            </p>
-                        </div>
-                    </div>
-                    <div
-                        class="bg-[hsl(var(--bs-card))] p-4 rounded-lg shadow-sm border border-border-light dark:border-border-dark flex items-center"
-                    >
-                        <div
-                            class="p-3 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 mr-4"
-                        >
-                            <span class="material-symbols-outlined"
-                                >attach_money</span
-                            >
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">
-                                Receita Est. (Hoje)
-                            </p>
-                            <p
-                                class="text-2xl font-bold text-gray-900 dark:text-white"
-                            >
-                                R$ {stats.receitaHoje
-                                    .toFixed(2)
-                                    .replace(".", ",")}
-                            </p>
-                        </div>
-                    </div>
                 </div>
+
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <!-- Left Column: Calendar -->
-                    <div class="space-y-6">
+                    <!-- Left: Calendar (Compact) -->
+                    <div class="lg:col-span-1">
                         <div
-                            class="bg-[hsl(var(--bs-card))] rounded-lg shadow-sm border border-border-light dark:border-border-dark p-4"
+                            class="bg-[hsl(var(--bs-card))] rounded-lg shadow-sm border border-border-light dark:border-border-dark p-6 sticky top-6"
                         >
-                            <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center justify-between mb-6">
                                 <h2
-                                    class="text-lg font-semibold text-gray-900 dark:text-white capitalize"
+                                    class="text-lg font-bold text-gray-900 dark:text-white capitalize"
                                 >
                                     {monthNames[currentMonth]}
                                     {currentYear}
@@ -540,21 +422,17 @@
                                 </div>
                             </div>
 
-                            <!-- Weekday Headers -->
-                            <div
-                                class="grid grid-cols-7 gap-1 text-center mb-2"
-                            >
-                                {#each dayNames as dayName}
+                            <div class="grid grid-cols-7 gap-1 text-center">
+                                <!-- Weekday Headers -->
+                                {#each dayNames as day}
                                     <div
-                                        class="text-xs font-semibold text-gray-400 uppercase tracking-wider"
+                                        class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider py-1"
                                     >
-                                        {dayName}
+                                        {day}
                                     </div>
                                 {/each}
-                            </div>
 
-                            <!-- Days Grid -->
-                            <div class="grid grid-cols-7 gap-1">
+                                <!-- Days -->
                                 {#each calendarDays as day}
                                     {#if day}
                                         {@const isSelected = isSelectedDay(
@@ -566,17 +444,17 @@
                                         {@const isToday = isTodayDay(day)}
                                         <button
                                             on:click={() => selectDate(day)}
-                                            class="aspect-square flex flex-col items-center justify-center rounded-full text-sm font-medium transition-all relative
+                                            class="aspect-square relative flex items-center justify-center rounded-md transition-all text-sm
                                             {isSelected
-                                                ? 'bg-primary text-white shadow-md'
+                                                ? 'bg-primary text-white shadow-sm font-bold'
                                                 : isToday
-                                                  ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}"
+                                                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-800'
+                                                  : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'}"
                                         >
-                                            {day}
-                                            {#if isToday && !isSelected}
+                                            <span>{day}</span>
+                                            {#if isSelected}
                                                 <div
-                                                    class="absolute bottom-1 w-1 h-1 bg-current rounded-full opacity-50"
+                                                    class="absolute bottom-1 w-1 h-1 bg-white rounded-full"
                                                 ></div>
                                             {/if}
                                         </button>
@@ -586,104 +464,9 @@
                                 {/each}
                             </div>
                         </div>
-
-                        <div
-                            class="bg-[hsl(var(--bs-card))] rounded-lg shadow-sm border border-border-light dark:border-border-dark p-6"
-                        >
-                            <h3
-                                class="text-lg font-semibold text-gray-900 dark:text-white mb-4"
-                            >
-                                Solicitações Recentes
-                            </h3>
-                            <div class="space-y-4">
-                                <div
-                                    class="flex items-start space-x-3 pb-4 border-b border-gray-100 dark:border-gray-800 last:border-0 last:pb-0"
-                                >
-                                    <div
-                                        class="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0"
-                                    >
-                                        <span
-                                            class="material-symbols-outlined text-sm"
-                                            >person</span
-                                        >
-                                    </div>
-                                    <div>
-                                        <p
-                                            class="text-sm font-medium text-gray-900 dark:text-white"
-                                        >
-                                            Novo cliente se cadastrou
-                                        </p>
-                                        <p
-                                            class="text-xs text-gray-500 dark:text-gray-400 mt-0.5"
-                                        >
-                                            Beatriz M. agendou para amanhã às
-                                            14h
-                                        </p>
-                                        <p class="text-xs text-gray-400 mt-1">
-                                            Há 15 min
-                                        </p>
-                                    </div>
-                                </div>
-                                <div
-                                    class="flex items-start space-x-3 pb-4 border-b border-gray-100 dark:border-gray-800 last:border-0 last:pb-0"
-                                >
-                                    <div
-                                        class="h-10 w-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0"
-                                    >
-                                        <span
-                                            class="material-symbols-outlined text-sm"
-                                            >star</span
-                                        >
-                                    </div>
-                                    <div>
-                                        <p
-                                            class="text-sm font-medium text-gray-900 dark:text-white"
-                                        >
-                                            Nova avaliação recebida
-                                        </p>
-                                        <p
-                                            class="text-xs text-gray-500 dark:text-gray-400 mt-0.5"
-                                        >
-                                            5 estrelas em "Corte e Escova"
-                                        </p>
-                                        <p class="text-xs text-gray-400 mt-1">
-                                            Há 2 horas
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                            <button
-                                class="w-full mt-4 text-center text-sm text-primary hover:text-primary-hover font-medium transition-colors"
-                            >
-                                Ver todas as notificações
-                            </button>
-                        </div>
-
-                        <div
-                            class="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-lg p-5"
-                        >
-                            <div class="flex items-center mb-2">
-                                <span
-                                    class="material-symbols-outlined text-blue-500 mr-2"
-                                    >info</span
-                                >
-                                <h4
-                                    class="text-sm font-semibold text-blue-800 dark:text-blue-300"
-                                >
-                                    Lembrete do Sistema
-                                </h4>
-                            </div>
-                            <p
-                                class="text-sm text-blue-600 dark:text-blue-400 mb-3"
-                            >
-                                Não se esqueça de confirmar os agendamentos
-                                pendentes até às 18:00 para evitar cancelamentos
-                                automáticos.
-                            </p>
-                        </div>
                     </div>
 
-                    <!-- Right Column: Appointments List -->
+                    <!-- Right: Appointments List -->
                     <div class="lg:col-span-2 space-y-4">
                         <h3
                             class="text-lg font-semibold text-gray-900 dark:text-white flex items-center"
@@ -692,7 +475,7 @@
                                 class="material-symbols-outlined text-primary mr-2"
                                 >schedule</span
                             >
-                            Atendimentos de {isToday(selectedDate)
+                            Agendamentos de {isToday(selectedDate)
                                 ? "Hoje"
                                 : selectedDate.toLocaleDateString("pt-BR", {
                                       day: "2-digit",
@@ -716,23 +499,22 @@
                                     >event_busy</span
                                 >
                                 <p class="text-gray-500 dark:text-gray-400">
-                                    Nenhum atendimento agendado para hoje
+                                    Nenhum agendamento encontrado para esta
+                                    data.
                                 </p>
                             </div>
                         {:else}
                             {#each todayAppointments as apt}
                                 {@const statusClasses = getStatusClasses(
-                                    apt.status,
+                                    apt.status.toString(),
                                 )}
                                 <div
-                                    class="bg-[hsl(var(--bs-card))] rounded-lg shadow-sm border-l-4 {statusClasses.border} border-y border-r border-gray-200 dark:border-gray-700 p-4 transition-all hover:shadow-md {apt.status ===
-                                    'concluido'
-                                        ? 'opacity-75'
-                                        : ''}"
+                                    class="bg-[hsl(var(--bs-card))] rounded-lg shadow-sm border-l-4 {statusClasses.border} border-y border-r border-gray-200 dark:border-gray-700 p-4 transition-all hover:shadow-md"
                                 >
                                     <div
                                         class="flex flex-col sm:flex-row justify-between items-start sm:items-center"
                                     >
+                                        <!-- Left Side: Time & Provider Info -->
                                         <div
                                             class="flex items-start space-x-4 mb-4 sm:mb-0"
                                         >
@@ -770,7 +552,6 @@
                                                         class="text-sm text-gray-600 dark:text-gray-300 font-medium"
                                                     >
                                                         {apt.servico?.nome ||
-                                                            apt.servico_nome ||
                                                             "Serviço"}
                                                     </span>
                                                     {#if apt.status === "confirmado"}
@@ -787,10 +568,10 @@
                                                 <p
                                                     class="text-sm text-gray-500 dark:text-gray-400 mt-1"
                                                 >
-                                                    Cliente: <span
+                                                    Profissional: <span
                                                         class="font-medium text-gray-800 dark:text-gray-200"
-                                                        >{apt.cliente_nome ||
-                                                            "Cliente"}</span
+                                                        >{apt.prestador
+                                                            ?.nome}</span
                                                     >
                                                 </p>
 
@@ -802,7 +583,11 @@
                                                         >attach_money</span
                                                     >
                                                     <span
-                                                        >R$ {(apt.preco || 0)
+                                                        >R$ {(
+                                                            (apt.servico
+                                                                ?.preco || 0) /
+                                                            100
+                                                        )
                                                             .toFixed(2)
                                                             .replace(
                                                                 ".",
@@ -815,11 +600,14 @@
                                                         >timer</span
                                                     >
                                                     <span
-                                                        >{apt.duracao || 60} min</span
+                                                        >{apt.servico
+                                                            ?.duracao || 60} min</span
                                                     >
                                                 </div>
                                             </div>
                                         </div>
+
+                                        <!-- Right Side: Actions -->
                                         <div
                                             class="flex space-x-2 w-full sm:w-auto"
                                         >
@@ -829,22 +617,10 @@
                                                         cancelAppointment(
                                                             apt.id,
                                                         )}
-                                                    class="flex-1 sm:flex-none px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                                                    >Cancelar</button
+                                                    class="flex-1 sm:flex-none px-3 py-1.5 border border-red-300 text-red-600 rounded text-sm hover:bg-red-50 transition-colors"
                                                 >
-                                                <button
-                                                    on:click={() =>
-                                                        confirmAppointment(
-                                                            apt.id,
-                                                        )}
-                                                    class="flex-1 sm:flex-none px-3 py-1.5 bg-primary hover:bg-primary-hover text-white rounded text-sm shadow-sm transition-colors"
-                                                    >Confirmar</button
-                                                >
-                                            {:else if apt.status === "confirmado" || apt.status === "concluido"}
-                                                <button
-                                                    class="flex-1 sm:flex-none px-3 py-1.5 text-primary hover:text-primary-hover text-sm font-medium transition-colors"
-                                                    >Detalhes</button
-                                                >
+                                                    Cancelar
+                                                </button>
                                             {/if}
                                         </div>
                                     </div>
@@ -854,37 +630,6 @@
                     </div>
                 </div>
             </div>
-            <footer
-                class="mt-12 text-center text-sm text-gray-500 dark:text-gray-400 pb-6"
-            >
-                <p>© 2023 BellaVita Salon. Todos os direitos reservados.</p>
-                <div class="mt-2 space-x-4">
-                    <a class="hover:text-primary transition-colors" href="/"
-                        >Suporte</a
-                    >
-                    <a class="hover:text-primary transition-colors" href="/"
-                        >Termos</a
-                    >
-                </div>
-            </footer>
         </div>
     </main>
 </div>
-
-<style>
-    /* Custom scrollbar to match original style */
-    ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-    }
-    ::-webkit-scrollbar-track {
-        background: transparent;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #d1d5db;
-        border-radius: 4px;
-    }
-    :global(.dark) ::-webkit-scrollbar-thumb {
-        background: #4b5563;
-    }
-</style>
