@@ -136,7 +136,7 @@
                 <div class="flex space-x-2">
                     <button
                         on:click={() => changeMonth(-1)}
-                        class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400"
+                        class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-colors"
                     >
                         <span class="material-symbols-outlined"
                             >chevron_left</span
@@ -144,7 +144,7 @@
                     </button>
                     <button
                         on:click={() => changeMonth(1)}
-                        class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400"
+                        class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-colors"
                     >
                         <span class="material-symbols-outlined"
                             >chevron_right</span
@@ -332,7 +332,12 @@
                     >
                 </button>
                 <button
-                    on:click={() => dispatch("editAvailability", { day: 0, month: currentMonth, year: currentYear })}
+                    on:click={() =>
+                        dispatch("editAvailability", {
+                            day: 0,
+                            month: currentMonth,
+                            year: currentYear,
+                        })}
                     class="flex flex-col items-center justify-center p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all text-center"
                 >
                     <span class="material-symbols-outlined text-blue-500 mb-1"

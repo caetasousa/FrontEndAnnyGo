@@ -27,14 +27,14 @@
     }
 
     // State
-    let providerId = "d583ek114a3g8q7re3rg"; // Fixed ID
+    let providerId = "d5dtvusb85jv9boc1cb0"; // Fixed ID
     let appointments: Appointment[] = [];
     let todayAppointments: Appointment[] = [];
     let stats: Stats = {
         hoje: 0,
         pendentes: 0,
         confirmados: 0,
-        receitaHoje: 0
+        receitaHoje: 0,
     };
     let loading = true;
 
@@ -43,8 +43,20 @@
     let currentWeekStart = getWeekStart(new Date());
     let currentMonth = selectedDate.getMonth();
     let currentYear = selectedDate.getFullYear();
-    const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-                        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    const monthNames = [
+        "Janeiro",
+        "Fevereiro",
+        "Março",
+        "Abril",
+        "Maio",
+        "Junho",
+        "Julho",
+        "Agosto",
+        "Setembro",
+        "Outubro",
+        "Novembro",
+        "Dezembro",
+    ];
     const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
     // Get today's date in YYYY-MM-DD format
@@ -67,16 +79,12 @@
     // Check if date is today
     function isToday(date: Date): boolean {
         const today = new Date();
-        return date.getDate() === today.getDate() &&
-               date.getMonth() === today.getMonth() &&
-               date.getFullYear() === today.getFullYear();
+        return formatDateString(date) === formatDateString(today);
     }
 
     // Check if date is selected
-    function isSelectedDate(date: Date): boolean {
-        return date.getDate() === selectedDate.getDate() &&
-               date.getMonth() === selectedDate.getMonth() &&
-               date.getFullYear() === selectedDate.getFullYear();
+    function isSelectedDate(date: Date, selected: Date): boolean {
+        return formatDateString(date) === formatDateString(selected);
     }
 
     // Check if date is in the past
@@ -100,13 +108,13 @@
     $: currentWeekDays = (() => {
         const days: Date[] = [];
         const weekStart = new Date(currentWeekStart);
-        
+
         for (let i = 0; i < 7; i++) {
             const day = new Date(weekStart);
             day.setDate(weekStart.getDate() + i);
             days.push(day);
         }
-        
+
         return days;
     })();
 
@@ -147,16 +155,61 @@
         try {
             const dateStr = formatDateString(date);
             const response = await fetch(
-                `/api/v1/agendamentos/prestador/${providerId}?data=${dateStr}`
+                `/api/v1/agendamentos/prestador/${providerId}?data=${dateStr}`,
             );
 
             if (response.ok) {
-                const data = await response.json();
-                appointments = Array.isArray(data) ? data : [];
-                
+                const json = await response.json();
+                const rawData = Array.isArray(json.data)
+                    ? json.data
+                    : Array.isArray(json)
+                      ? json
+                      : [];
+
+                appointments = rawData.map((item: any) => {
+                    let data = item.data;
+                    let hora_inicio = item.hora_inicio;
+                    let hora_fim = item.hora_fim;
+                    let status = item.status;
+
+                    // Normalize Dates & Times from ISO
+                    if (!data && item.data_inicio) {
+                        data = item.data_inicio.split("T")[0];
+                    }
+                    if (!hora_inicio && item.data_inicio) {
+                        hora_inicio = item.data_inicio
+                            .split("T")[1]
+                            .substring(0, 8); // hh:mm:ss
+                    }
+                    if (!hora_fim && item.data_fim) {
+                        hora_fim = item.data_fim.split("T")[1].substring(0, 8);
+                    }
+
+                    // Normalize Status (Number -> String)
+                    if (typeof status === "number") {
+                        const statusMap: Record<number, string> = {
+                            1: "pendente",
+                            2: "confirmado",
+                            3: "concluido",
+                            4: "cancelado",
+                        };
+                        status = statusMap[status] || "pendente";
+                    }
+
+                    return {
+                        ...item,
+                        data,
+                        hora_inicio,
+                        hora_fim,
+                        status,
+                    };
+                });
+
                 // Filter for selected date's appointments
-                todayAppointments = appointments.filter(apt => apt.data === dateStr);
-                
+                todayAppointments = appointments.filter(
+                    (apt) => apt.data === dateStr,
+                );
+
                 // Calculate stats (only for today)
                 calculateStats();
             } else {
@@ -176,14 +229,19 @@
     // Calculate statistics
     function calculateStats() {
         const today = getTodayDateString();
-        const todayApts = appointments.filter(apt => apt.data === today);
-        
+        const todayApts = appointments.filter((apt) => apt.data === today);
+
         stats.hoje = todayApts.length;
-        stats.pendentes = todayApts.filter(apt => apt.status === "pendente").length;
-        stats.confirmados = todayApts.filter(apt => apt.status === "confirmado").length;
-        stats.receitaHoje = todayApts
-            .filter(apt => apt.status !== "cancelado")
-            .reduce((sum, apt) => sum + (apt.preco || 0), 0) / 100; // Convert from cents
+        stats.pendentes = todayApts.filter(
+            (apt) => apt.status === "pendente",
+        ).length;
+        stats.confirmados = todayApts.filter(
+            (apt) => apt.status === "confirmado",
+        ).length;
+        stats.receitaHoje =
+            todayApts
+                .filter((apt) => apt.status !== "cancelado")
+                .reduce((sum, apt) => sum + (apt.preco || 0), 0) / 100; // Convert from cents
     }
 
     // Format time from HH:MM:SS to HH:MM
@@ -198,38 +256,41 @@
             pendente: "Aguardando Confirmação",
             confirmado: "Confirmado",
             cancelado: "Cancelado",
-            concluido: "Concluído"
+            concluido: "Concluído",
         };
         return labels[status] || status;
     }
 
     // Get status color classes
     function getStatusClasses(status: string) {
-        const classes: Record<string, { border: string; bg: string; text: string; badge: string }> = {
+        const classes: Record<
+            string,
+            { border: string; bg: string; text: string; badge: string }
+        > = {
             pendente: {
                 border: "border-l-warning",
                 bg: "bg-warning/10",
                 text: "text-warning",
-                badge: "bg-warning/20 text-warning"
+                badge: "bg-warning/20 text-warning",
             },
             confirmado: {
                 border: "border-l-success",
                 bg: "bg-success/10",
                 text: "text-success",
-                badge: "bg-success/20 text-success"
+                badge: "bg-success/20 text-success",
             },
             cancelado: {
                 border: "border-l-gray-400",
                 bg: "bg-gray-200 dark:bg-gray-700",
                 text: "text-gray-500",
-                badge: "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                badge: "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300",
             },
             concluido: {
                 border: "border-l-gray-400",
                 bg: "bg-gray-200 dark:bg-gray-700",
                 text: "text-gray-500",
-                badge: "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
-            }
+                badge: "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300",
+            },
         };
         return classes[status] || classes.pendente;
     }
@@ -237,9 +298,12 @@
     // Confirm appointment
     async function confirmAppointment(appointmentId: string) {
         try {
-            const response = await fetch(`/api/v1/agendamentos/${appointmentId}/confirmar`, {
-                method: "PUT"
-            });
+            const response = await fetch(
+                `/api/v1/agendamentos/${appointmentId}/confirmar`,
+                {
+                    method: "PUT",
+                },
+            );
 
             if (response.ok) {
                 await fetchTodayAppointments(); // Refresh data
@@ -254,9 +318,12 @@
     // Cancel appointment
     async function cancelAppointment(appointmentId: string) {
         try {
-            const response = await fetch(`/api/v1/agendamentos/${appointmentId}/cancelar`, {
-                method: "PUT"
-            });
+            const response = await fetch(
+                `/api/v1/agendamentos/${appointmentId}/cancelar`,
+                {
+                    method: "PUT",
+                },
+            );
 
             if (response.ok) {
                 await fetchTodayAppointments(); // Refresh data
@@ -409,7 +476,9 @@
                             <p
                                 class="text-2xl font-bold text-gray-900 dark:text-white"
                             >
-                                R$ {stats.receitaHoje.toFixed(2).replace(".", ",")}
+                                R$ {stats.receitaHoje
+                                    .toFixed(2)
+                                    .replace(".", ",")}
                             </p>
                         </div>
                     </div>
@@ -421,12 +490,13 @@
                         <h2
                             class="text-lg font-semibold text-gray-900 dark:text-white"
                         >
-                            {monthNames[currentMonth]} {currentYear}
+                            {monthNames[currentMonth]}
+                            {currentYear}
                         </h2>
                         <div class="flex space-x-2">
                             <button
                                 on:click={previousDay}
-                                class="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
+                                class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors"
                             >
                                 <span class="material-symbols-outlined"
                                     >chevron_left</span
@@ -434,7 +504,7 @@
                             </button>
                             <button
                                 on:click={nextDay}
-                                class="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
+                                class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors"
                             >
                                 <span class="material-symbols-outlined"
                                     >chevron_right</span
@@ -443,24 +513,39 @@
                         </div>
                     </div>
                     <div class="grid grid-cols-7 gap-2 text-center">
-                        {#each currentWeekDays as day, index}
+                        {#each currentWeekDays as day, index (day.getTime())}
                             {@const isPast = isPastDate(day)}
                             {@const isTodayDate = isToday(day)}
-                            {@const isSelected = isSelectedDate(day)}
+                            {@const isSelected = isSelectedDate(
+                                day,
+                                selectedDate,
+                            )}
                             <button
                                 on:click={() => selectDate(day)}
                                 disabled={isPast}
                                 class="p-2 rounded-lg transition-all {isSelected
                                     ? 'bg-primary text-white shadow-md'
                                     : isTodayDate
-                                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                                    : !isPast
-                                    ? 'hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer'
-                                    : 'text-gray-400 cursor-not-allowed'}"
+                                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                                      : !isPast
+                                        ? 'hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer'
+                                        : 'text-gray-400 cursor-not-allowed'}"
                             >
-                                <p class="text-xs {isSelected ? 'text-white/80' : 'text-gray-500'} uppercase">{dayNames[index]}</p>
                                 <p
-                                    class="text-sm font-medium mt-1 {isSelected ? 'text-white font-bold' : isTodayDate ? 'text-blue-600 dark:text-blue-400 font-bold' : !isPast ? 'text-gray-900 dark:text-white' : 'text-gray-400'}"
+                                    class="text-xs {isSelected
+                                        ? 'text-white/80'
+                                        : 'text-gray-500'} uppercase"
+                                >
+                                    {dayNames[index]}
+                                </p>
+                                <p
+                                    class="text-sm font-medium mt-1 {isSelected
+                                        ? 'text-white font-bold'
+                                        : isTodayDate
+                                          ? 'text-blue-600 dark:text-blue-400 font-bold'
+                                          : !isPast
+                                            ? 'text-gray-900 dark:text-white'
+                                            : 'text-gray-400'}"
                                 >
                                     {day.getDate()}
                                 </p>
@@ -477,23 +562,43 @@
                                 class="material-symbols-outlined text-primary mr-2"
                                 >schedule</span
                             >
-                            Atendimentos de {isToday(selectedDate) ? "Hoje" : selectedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
+                            Atendimentos de {isToday(selectedDate)
+                                ? "Hoje"
+                                : selectedDate.toLocaleDateString("pt-BR", {
+                                      day: "2-digit",
+                                      month: "long",
+                                  })}
                         </h3>
-                        
+
                         {#if loading}
                             <div class="flex justify-center py-12">
-                                <span class="material-symbols-outlined animate-spin text-brand-orange text-3xl">sync</span>
+                                <span
+                                    class="material-symbols-outlined animate-spin text-brand-orange text-3xl"
+                                    >sync</span
+                                >
                             </div>
                         {:else if todayAppointments.length === 0}
-                            <div class="bg-[hsl(var(--bs-card))] rounded-lg shadow-sm border border-border-light dark:border-border-dark p-8 text-center">
-                                <span class="material-symbols-outlined text-gray-400 text-5xl mb-2">event_busy</span>
-                                <p class="text-gray-500 dark:text-gray-400">Nenhum atendimento agendado para hoje</p>
+                            <div
+                                class="bg-[hsl(var(--bs-card))] rounded-lg shadow-sm border border-border-light dark:border-border-dark p-8 text-center"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-gray-400 text-5xl mb-2"
+                                    >event_busy</span
+                                >
+                                <p class="text-gray-500 dark:text-gray-400">
+                                    Nenhum atendimento agendado para hoje
+                                </p>
                             </div>
                         {:else}
                             {#each todayAppointments as apt}
-                                {@const statusClasses = getStatusClasses(apt.status)}
+                                {@const statusClasses = getStatusClasses(
+                                    apt.status,
+                                )}
                                 <div
-                                    class="bg-[hsl(var(--bs-card))] rounded-lg shadow-sm border-l-4 {statusClasses.border} border-y border-r border-gray-200 dark:border-gray-700 p-4 transition-all hover:shadow-md {apt.status === 'concluido' ? 'opacity-75' : ''}"
+                                    class="bg-[hsl(var(--bs-card))] rounded-lg shadow-sm border-l-4 {statusClasses.border} border-y border-r border-gray-200 dark:border-gray-700 p-4 transition-all hover:shadow-md {apt.status ===
+                                    'concluido'
+                                        ? 'opacity-75'
+                                        : ''}"
                                 >
                                     <div
                                         class="flex flex-col sm:flex-row justify-between items-start sm:items-center"
@@ -504,7 +609,9 @@
                                             <div
                                                 class="{statusClasses.bg} {statusClasses.text} p-2 rounded-full"
                                             >
-                                                <span class="material-symbols-outlined">
+                                                <span
+                                                    class="material-symbols-outlined"
+                                                >
                                                     {#if apt.status === "pendente"}
                                                         hourglass_top
                                                     {:else if apt.status === "confirmado"}
@@ -519,20 +626,32 @@
                                             <div>
                                                 <div class="flex items-center">
                                                     <span
-                                                        class="text-lg font-bold {apt.status === 'concluido' ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}"
-                                                        >{formatTime(apt.hora_inicio)}</span
+                                                        class="text-lg font-bold {apt.status ===
+                                                        'concluido'
+                                                            ? 'text-gray-500 dark:text-gray-400'
+                                                            : 'text-gray-900 dark:text-white'}"
+                                                        >{formatTime(
+                                                            apt.hora_inicio,
+                                                        )}</span
                                                     >
-                                                    <span class="mx-2 text-gray-400"
+                                                    <span
+                                                        class="mx-2 text-gray-400"
                                                         >•</span
                                                     >
                                                     <span
-                                                        class="text-sm {apt.status === 'concluido' ? 'text-gray-500 dark:text-gray-400 line-through' : 'text-gray-600 dark:text-gray-300'} font-medium"
-                                                        >{apt.servico_nome || "Serviço"}</span
+                                                        class="text-sm {apt.status ===
+                                                        'concluido'
+                                                            ? 'text-gray-500 dark:text-gray-400 line-through'
+                                                            : 'text-gray-600 dark:text-gray-300'} font-medium"
+                                                        >{apt.servico_nome ||
+                                                            "Serviço"}</span
                                                     >
                                                     {#if apt.status === "confirmado"}
                                                         <span
                                                             class="ml-2 text-xs {statusClasses.badge} px-2 py-0.5 rounded-full"
-                                                            >{getStatusLabel(apt.status)}</span
+                                                            >{getStatusLabel(
+                                                                apt.status,
+                                                            )}</span
                                                         >
                                                     {/if}
                                                 </div>
@@ -540,8 +659,12 @@
                                                     class="text-sm text-gray-500 dark:text-gray-400 mt-1"
                                                 >
                                                     Cliente: <span
-                                                        class="font-medium {apt.status === 'concluido' ? '' : 'text-gray-800 dark:text-gray-200'}"
-                                                        >{apt.cliente_nome || "Cliente"}</span
+                                                        class="font-medium {apt.status ===
+                                                        'concluido'
+                                                            ? ''
+                                                            : 'text-gray-800 dark:text-gray-200'}"
+                                                        >{apt.cliente_nome ||
+                                                            "Cliente"}</span
                                                     >
                                                 </p>
                                                 <div
@@ -551,26 +674,40 @@
                                                         class="material-symbols-outlined text-[16px] mr-1"
                                                         >timer</span
                                                     >
-                                                    <span>{apt.duracao || 60} min</span>
+                                                    <span
+                                                        >{apt.duracao || 60} min</span
+                                                    >
                                                     {#if apt.status === "pendente"}
-                                                        <span class="mx-2">•</span>
+                                                        <span class="mx-2"
+                                                            >•</span
+                                                        >
                                                         <span
                                                             class="{statusClasses.text} font-medium"
-                                                            >{getStatusLabel(apt.status)}</span
+                                                            >{getStatusLabel(
+                                                                apt.status,
+                                                            )}</span
                                                         >
                                                     {/if}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="flex space-x-2 w-full sm:w-auto">
+                                        <div
+                                            class="flex space-x-2 w-full sm:w-auto"
+                                        >
                                             {#if apt.status === "pendente"}
                                                 <button
-                                                    on:click={() => cancelAppointment(apt.id)}
+                                                    on:click={() =>
+                                                        cancelAppointment(
+                                                            apt.id,
+                                                        )}
                                                     class="flex-1 sm:flex-none px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                                                     >Cancelar</button
                                                 >
                                                 <button
-                                                    on:click={() => confirmAppointment(apt.id)}
+                                                    on:click={() =>
+                                                        confirmAppointment(
+                                                            apt.id,
+                                                        )}
                                                     class="flex-1 sm:flex-none px-3 py-1.5 bg-primary hover:bg-primary-hover text-white rounded text-sm shadow-sm transition-colors"
                                                     >Confirmar</button
                                                 >

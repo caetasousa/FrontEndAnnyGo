@@ -5,24 +5,27 @@
     import ServiceSelectionModal from "$lib/components/profile/ServiceSelectionModal.svelte";
     import AlertModal from "$lib/components/AlertModal.svelte";
     import ProfileDataAndServicesTab from "$lib/components/profile/ProfileDataAndServicesTab.svelte";
-    
-    import type { 
-        Service, 
-        ProviderProfile, 
-        ProviderData 
-    } from '$lib/types/profile';
 
-    import { uploadPrestadorImageToSupabase, deleteImageFromSupabase } from "$lib/utils/imageUpload";
+    import type {
+        Service,
+        ProviderProfile,
+        ProviderData,
+    } from "$lib/types/profile";
+
+    import {
+        uploadPrestadorImageToSupabase,
+        deleteImageFromSupabase,
+    } from "$lib/utils/imageUpload";
 
     // --- Provider Data ---
-    let providerId = "d583ek114a3g8q7re3rg"; // Fixed ID as requested
+    let providerId = "d5dtvusb85jv9boc1cb0"; // Fixed ID as requested
     let currentProviderData: ProviderData | null = null;
 
     // --- Services Logic ---
     let services: any[] = [];
     let servicesLoading = false;
     let showSelectionModal = false;
-    
+
     // --- Edit Mode Logic ---
     let isEditing = false;
     let selectedFile: File | null = null;
@@ -59,9 +62,10 @@
                         ID: s.id || (s as any).ID,
                         Nome: s.nome || (s as any).Nome,
                         Preco: s.preco || (s as any).Preco,
-                        DuracaoPadrao: s.duracao_padrao || (s as any).DuracaoPadrao,
+                        DuracaoPadrao:
+                            s.duracao_padrao || (s as any).DuracaoPadrao,
                         Categoria: s.categoria || (s as any).Categoria,
-                        ImagemUrl: s.image_url || (s as any).ImagemUrl || ""
+                        ImagemUrl: s.image_url || (s as any).ImagemUrl || "",
                     }));
                 }
             } else {
@@ -86,7 +90,9 @@
         fetchProviderData(); // Reset data
     }
 
-    function handleImageSelect(event: CustomEvent<{ file: File; preview: string }>) {
+    function handleImageSelect(
+        event: CustomEvent<{ file: File; preview: string }>,
+    ) {
         selectedFile = event.detail.file;
         profile.avatarUrl = event.detail.preview;
     }
@@ -103,13 +109,13 @@
     async function saveProviderCatalog(updatedServices: any[]) {
         if (!currentProviderData) return;
 
-        const catalogIds = updatedServices.map(s => String(s.ID));
+        const catalogIds = updatedServices.map((s) => String(s.ID));
 
         const updatedProvider: ProviderData = {
             ...currentProviderData,
             catalogo_ids: catalogIds,
             catalogo: currentProviderData.catalogo || [],
-            agenda: currentProviderData.agenda || []
+            agenda: currentProviderData.agenda || [],
         };
 
         try {
@@ -124,8 +130,14 @@
                 currentProviderData = updatedProvider;
             } else {
                 const errorText = await response.text();
-                console.error("Failed to update catalog", response.status, errorText);
-                alert(`Erro ao atualizar catálogo (${response.status}): ${errorText}`);
+                console.error(
+                    "Failed to update catalog",
+                    response.status,
+                    errorText,
+                );
+                alert(
+                    `Erro ao atualizar catálogo (${response.status}): ${errorText}`,
+                );
             }
         } catch (e) {
             console.error("Error saving catalog:", e);
@@ -140,7 +152,8 @@
             let imageUrl = profile.avatarUrl;
 
             if (selectedFile) {
-                const uploadedUrl = await uploadPrestadorImageToSupabase(selectedFile);
+                const uploadedUrl =
+                    await uploadPrestadorImageToSupabase(selectedFile);
                 if (uploadedUrl) {
                     imageUrl = uploadedUrl;
                 } else {
@@ -159,7 +172,7 @@
                 telefone: profile.phone,
                 cpf: profile.cpf,
                 catalogo: currentProviderData.catalogo || [],
-                agenda: currentProviderData.agenda || []
+                agenda: currentProviderData.agenda || [],
             };
 
             const response = await fetch(`/api/v1/prestadores/${providerId}`, {
@@ -169,16 +182,26 @@
             });
 
             if (response.ok) {
-                if (selectedFile && currentProviderData.image_url && currentProviderData.image_url !== imageUrl) {
-                    deleteImageFromSupabase(currentProviderData.image_url).then(success => {
-                        if (success) console.log("Old image deleted successfully");
-                        else console.warn("Failed to delete old image");
-                    });
+                if (
+                    selectedFile &&
+                    currentProviderData.image_url &&
+                    currentProviderData.image_url !== imageUrl
+                ) {
+                    deleteImageFromSupabase(currentProviderData.image_url).then(
+                        (success) => {
+                            if (success)
+                                console.log("Old image deleted successfully");
+                            else console.warn("Failed to delete old image");
+                        },
+                    );
                 }
 
-                currentProviderData = { ...currentProviderData, ...updatedProvider };
+                currentProviderData = {
+                    ...currentProviderData,
+                    ...updatedProvider,
+                };
                 isEditing = false;
-                
+
                 alertConfig = {
                     title: "Sucesso",
                     message: "Dados atualizados com sucesso!",
@@ -186,12 +209,18 @@
                     confirmText: "OK",
                     showCancel: false,
                 };
-                onConfirmAction = () => { showAlert = false; };
+                onConfirmAction = () => {
+                    showAlert = false;
+                };
                 showAlert = true;
             } else {
                 const errorText = await response.text();
-                console.error("Failed to update profile", response.status, errorText);
-                
+                console.error(
+                    "Failed to update profile",
+                    response.status,
+                    errorText,
+                );
+
                 alertConfig = {
                     title: "Erro",
                     message: `Erro ao atualizar dados: ${errorText}`,
@@ -257,7 +286,7 @@
         }
     }
 
-    function handleRemoveService(event: CustomEvent<{ service: any}>) {
+    function handleRemoveService(event: CustomEvent<{ service: any }>) {
         const service = event.detail.service;
         alertConfig = {
             title: "Remover Serviço",
@@ -286,7 +315,9 @@
             <div class="max-w-6xl mx-auto space-y-6">
                 <!-- Page Header -->
                 <div class="mb-6">
-                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+                    <h1
+                        class="text-3xl font-bold text-gray-900 dark:text-white"
+                    >
                         Meus Dados
                     </h1>
                     <p class="text-gray-500 dark:text-gray-400 mt-2">
@@ -295,8 +326,8 @@
                 </div>
 
                 <!-- Content -->
-                <ProfileDataAndServicesTab 
-                    {profile} 
+                <ProfileDataAndServicesTab
+                    {profile}
                     {isEditing}
                     {services}
                     {servicesLoading}
@@ -315,7 +346,7 @@
         <ServiceSelectionModal
             bind:show={showSelectionModal}
             {providerId}
-            existingServiceIds={services.map(s => s.ID)}
+            existingServiceIds={services.map((s) => s.ID)}
             on:add={handleAddService}
         />
 

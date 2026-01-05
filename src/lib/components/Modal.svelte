@@ -53,7 +53,7 @@
                 </h3>
                 <button
                     on:click={close}
-                    class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                    class="w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
                 >
                     <span class="material-symbols-outlined">close</span>
                 </button>

@@ -6,7 +6,7 @@
     import { page } from "$app/stores";
 
     // --- Configuração ---
-    const CLIENTE_ID = "d599id914a3on4b8osn0"; // Cliente Mockado
+    const CLIENTE_ID = "d5du4rcb85jv9boc1ch0"; // Cliente Mockado
 
     // --- Estado ---
     let professionals: any[] = [];
@@ -1049,7 +1049,7 @@
                                                 >
                                                     {#if isSunday && !isPast}
                                                         <div
-                                                            class="w-1.5 h-1.5 rounded-full  bg-red-500 mb-0.5"
+                                                            class="w-1.5 h-1.5 rounded-full bg-red-500 mb-0.5"
                                                         ></div>
                                                     {:else if isSaturday && !isPast}
                                                         <div

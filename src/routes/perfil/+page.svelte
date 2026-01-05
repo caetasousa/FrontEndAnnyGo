@@ -5,15 +5,15 @@
     import AvailabilityModal from "$lib/components/profile/AvailabilityModal.svelte";
     import ServiceSelectionModal from "$lib/components/profile/ServiceSelectionModal.svelte";
     import AlertModal from "$lib/components/AlertModal.svelte";
-    
+
     // Import shared types
-    import type { 
-        Service, 
-        AgendaInterval, 
-        AgendaDay, 
-        ProviderProfile, 
-        ProviderData 
-    } from '$lib/types/profile';
+    import type {
+        Service,
+        AgendaInterval,
+        AgendaDay,
+        ProviderProfile,
+        ProviderData,
+    } from "$lib/types/profile";
 
     // Import Refactored Components
     import ProfileAgendaTab from "$lib/components/profile/ProfileAgendaTab.svelte";
@@ -31,12 +31,8 @@
         "2025-07-28": { status: "off", label: "Férias" }, // Example future date
     };
 
-
-
-
-
     // --- Provider Data ---
-    let providerId = "d583ek114a3g8q7re3rg"; // Fixed ID as requested
+    let providerId = "d5dtvusb85jv9boc1cb0"; // Fixed ID as requested
     let availabilityMap: Record<string, AgendaInterval[]> = {};
     let currentProviderData: ProviderData | null = null;
 
@@ -51,15 +47,20 @@
                 const agendaData = data.agenda;
                 if (agendaData && Array.isArray(agendaData)) {
                     availabilityMap = agendaData.reduce(
-                        (acc: Record<string, AgendaInterval[]>, item: AgendaDay) => {
+                        (
+                            acc: Record<string, AgendaInterval[]>,
+                            item: AgendaDay,
+                        ) => {
                             const dateKey = item.data;
                             const intervalos = item.intervalos || [];
 
-                            acc[dateKey] = intervalos.map((inv: AgendaInterval) => ({
-                                id: inv.id,
-                                hora_inicio: inv.hora_inicio,
-                                hora_fim: inv.hora_fim,
-                            }));
+                            acc[dateKey] = intervalos.map(
+                                (inv: AgendaInterval) => ({
+                                    id: inv.id,
+                                    hora_inicio: inv.hora_inicio,
+                                    hora_fim: inv.hora_fim,
+                                }),
+                            );
                             return acc;
                         },
                         {},
@@ -82,19 +83,23 @@
     let selectedDateForModal = "";
     let selectedIntervalsForModal: { start: string; end: string }[] = [];
 
-    function openAvailabilityModal(day?: number, month?: number, year?: number) {
+    function openAvailabilityModal(
+        day?: number,
+        month?: number,
+        year?: number,
+    ) {
         const targetDate = new Date();
         let targetDay = day;
 
         if (typeof targetDay !== "number") {
-             selectedDateForModal = "";
-             selectedIntervalsForModal = [];
-             showAvailabilityModal = true;
-             return;
+            selectedDateForModal = "";
+            selectedIntervalsForModal = [];
+            showAvailabilityModal = true;
+            return;
         }
 
-        const m = typeof month === 'number' ? month : currentMonth;
-        const y = typeof year === 'number' ? year : currentYear;
+        const m = typeof month === "number" ? month : currentMonth;
+        const y = typeof year === "number" ? year : currentYear;
 
         const dateObj = new Date(y, m, targetDay);
         const today = new Date();
@@ -108,20 +113,27 @@
 
         if (availabilityMap[selectedDateForModal]) {
             const rawIntervals = availabilityMap[selectedDateForModal];
-            selectedIntervalsForModal = rawIntervals.map((i: AgendaInterval) => ({
-                start: i.hora_inicio,
-                end: i.hora_fim,
-            }));
+            selectedIntervalsForModal = rawIntervals.map(
+                (i: AgendaInterval) => ({
+                    start: i.hora_inicio,
+                    end: i.hora_fim,
+                }),
+            );
         } else {
             selectedIntervalsForModal = [];
         }
         showAvailabilityModal = true;
     }
-    
-    function handleEditAvailability(event: CustomEvent<{ day: number; month: number; year: number }>) {
-        openAvailabilityModal(event.detail.day, event.detail.month, event.detail.year);
-    }
 
+    function handleEditAvailability(
+        event: CustomEvent<{ day: number; month: number; year: number }>,
+    ) {
+        openAvailabilityModal(
+            event.detail.day,
+            event.detail.month,
+            event.detail.year,
+        );
+    }
 </script>
 
 <div
@@ -135,7 +147,7 @@
         <div class="flex-1 overflow-y-auto p-6 md:p-8">
             <div class="max-w-6xl mx-auto space-y-6">
                 <!-- Agenda Content -->
-                <ProfileAgendaTab 
+                <ProfileAgendaTab
                     {availabilityMap}
                     {dayExceptions}
                     on:editAvailability={handleEditAvailability}
@@ -150,7 +162,5 @@
             initialIntervals={selectedIntervalsForModal}
             on:success={fetchProviderData}
         />
-
-
     </main>
 </div>
