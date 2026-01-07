@@ -104,8 +104,26 @@
         return formatDateString(date) === formatDateString(today);
     }
 
+    function isPastDate(day: number, month: number, year: number): boolean {
+        if (!day) return false;
+        const checkDate = new Date(year, month, day);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to compare dates only
+        return checkDate < today;
+    }
+
     // Navigation
     function changeMonth(step: number) {
+        // Prevent going to past months
+        const today = new Date();
+        if (
+            step < 0 &&
+            currentYear === today.getFullYear() &&
+            currentMonth === today.getMonth()
+        ) {
+            return;
+        }
+
         currentMonth += step;
         if (currentMonth > 11) {
             currentMonth = 0;
@@ -114,13 +132,18 @@
             currentMonth = 11;
             currentYear--;
         }
+        // Fetch new month data
+        const date = new Date(currentYear, currentMonth, 1);
+        fetchAppointmentsForMonth(date);
     }
 
     function selectDate(day: number) {
         if (!day) return;
+        if (isPastDate(day, currentMonth, currentYear)) return;
+
         const newDate = new Date(currentYear, currentMonth, day);
         selectedDate = newDate;
-        fetchAppointmentsForDate(newDate);
+        updateTodayAppointments();
     }
 
     function isSelectedDay(
@@ -141,12 +164,36 @@
     }
 
     // API
-    async function fetchAppointmentsForDate(date: Date) {
+    async function fetchAppointmentsForMonth(date: Date) {
         loading = true;
         try {
-            const dateStr = formatDateString(date);
+            // Calculate start and end of the month for the given date's month
+            const year = date.getFullYear();
+            const month = date.getMonth();
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            let startDate = new Date(year, month, 1);
+
+            // If current month, start from today to avoid fetching past days unnecessary
+            if (year === today.getFullYear() && month === today.getMonth()) {
+                startDate = today;
+            }
+
+            const endDate = new Date(year, month + 1, 0); // Last day of month
+
+            const startStr = formatDateString(startDate);
+            const endStr = formatDateString(endDate);
+
+            // Calculate limit based on days difference (approx days + buffer or strict days?)
+            // User requested not to be fixed at 1000. Matching the "days" count or a reasonable multiple.
+            // Using days count as per User's earlier example (limit=31 for 31 days).
+            const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
             const response = await fetch(
-                `/api/v1/agendamentos/cliente/${clientId}?data=${dateStr}`,
+                `/api/v1/agendamentos/cliente/${clientId}/periodo?data_inicio=${startStr}&data_fim=${endStr}&page=1&limit=${diffDays}`,
             );
 
             if (response.ok) {
@@ -154,10 +201,8 @@
                 const rawData = Array.isArray(json.data) ? json.data : [];
 
                 appointments = rawData.map((item: any) => {
-                    let data = item.data; // Usually undefined in payload, derive from timestamps
+                    let data = item.data;
 
-                    // Normalize Dates & Times from ISO
-                    // item.data_inicio: "2026-01-06T08:00:00Z"
                     if (!data && item.data_inicio) {
                         data = item.data_inicio.split("T")[0];
                     }
@@ -171,7 +216,6 @@
                         : "00:00";
 
                     let status = item.status;
-                    // Normalize Status (Number -> String)
                     if (typeof status === "number") {
                         const statusMap: Record<number, string> = {
                             1: "pendente",
@@ -191,12 +235,7 @@
                     };
                 });
 
-                // Filter? API usually filters by date, but double check
-                todayAppointments = appointments.filter(
-                    (apt) => apt.data === dateStr,
-                );
-
-                calculateStats();
+                updateTodayAppointments();
             } else {
                 console.error("Failed to fetch appointments");
                 appointments = [];
@@ -209,6 +248,13 @@
         } finally {
             loading = false;
         }
+    }
+
+    function updateTodayAppointments() {
+        if (!selectedDate) return;
+        const dateStr = formatDateString(selectedDate);
+        todayAppointments = appointments.filter((apt) => apt.data === dateStr);
+        calculateStats();
     }
 
     function calculateStats() {
@@ -238,7 +284,7 @@
             );
 
             if (response.ok) {
-                await fetchAppointmentsForDate(selectedDate); // Refresh
+                await fetchAppointmentsForMonth(selectedDate); // Refresh
             } else {
                 alert("Erro ao cancelar agendamento");
             }
@@ -292,7 +338,7 @@
     }
 
     onMount(() => {
-        fetchAppointmentsForDate(selectedDate);
+        fetchAppointmentsForMonth(selectedDate);
     });
 </script>
 
@@ -403,7 +449,11 @@
                                 <div class="flex space-x-1">
                                     <button
                                         on:click={() => changeMonth(-1)}
-                                        class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors"
+                                        class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                                        disabled={currentYear ===
+                                            new Date().getFullYear() &&
+                                            currentMonth ===
+                                                new Date().getMonth()}
                                     >
                                         <span
                                             class="material-symbols-outlined text-[20px]"
@@ -442,17 +492,28 @@
                                             currentYear,
                                         )}
                                         {@const isToday = isTodayDay(day)}
+                                        {@const isPast = isPastDate(
+                                            day,
+                                            currentMonth,
+                                            currentYear,
+                                        )}
                                         <button
                                             on:click={() => selectDate(day)}
+                                            disabled={isPast}
                                             class="aspect-square relative flex items-center justify-center rounded-md transition-all text-sm
-                                            {isSelected
+                                            {isPast
+                                                ? 'opacity-30 cursor-not-allowed hover:bg-transparent text-gray-400'
+                                                : ''}
+                                            {!isPast && isSelected
                                                 ? 'bg-primary text-white shadow-sm font-bold'
-                                                : isToday
+                                                : !isPast && isToday
                                                   ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-800'
-                                                  : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'}"
+                                                  : !isPast
+                                                    ? 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
+                                                    : ''}"
                                         >
                                             <span>{day}</span>
-                                            {#if isSelected}
+                                            {#if isSelected && !isPast}
                                                 <div
                                                     class="absolute bottom-1 w-1 h-1 bg-white rounded-full"
                                                 ></div>

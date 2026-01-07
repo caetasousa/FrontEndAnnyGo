@@ -91,12 +91,30 @@
     }
 
     // Check if date is in the past
-    function isPastDate(date: Date): boolean {
+    function isPastDate(
+        day: number | Date,
+        month?: number,
+        year?: number,
+    ): boolean {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const checkDate = new Date(date);
-        checkDate.setHours(0, 0, 0, 0);
-        return checkDate < today;
+
+        if (day instanceof Date) {
+            const checkDate = new Date(day);
+            checkDate.setHours(0, 0, 0, 0);
+            return checkDate < today;
+        }
+
+        if (
+            typeof day === "number" &&
+            month !== undefined &&
+            year !== undefined
+        ) {
+            const checkDate = new Date(year, month, day);
+            return checkDate < today;
+        }
+
+        return false;
     }
 
     // Calendar logic
@@ -119,6 +137,16 @@
     })();
 
     function changeMonth(step: number) {
+        // Prevent going to past months
+        const today = new Date();
+        if (
+            step < 0 &&
+            currentYear === today.getFullYear() &&
+            currentMonth === today.getMonth()
+        ) {
+            return;
+        }
+
         let newMonth = currentMonth + step;
         let newYear = currentYear;
 
@@ -132,19 +160,20 @@
 
         currentMonth = newMonth;
         currentYear = newYear;
+
+        const date = new Date(currentYear, currentMonth, 1);
+        fetchAppointmentsForMonth(date);
     }
 
     function selectDate(day: number) {
         if (!day) return;
+
+        if (isPastDate(day, currentMonth, currentYear)) return;
+
         const newDate = new Date(currentYear, currentMonth, day);
 
-        // Calendar Helper to check past date
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (newDate < today) return;
-
         selectedDate = newDate;
-        fetchAppointmentsForDate(newDate);
+        updateTodayAppointments();
     }
 
     function isSelectedDay(
@@ -165,19 +194,39 @@
         return formatDateString(checkDate) === formatDateString(today);
     }
 
-    // Fetch appointments for today
-    async function fetchTodayAppointments() {
+    // Fetch appointments for today/current month
+    async function fetchCurrentMonthAppointments() {
         const today = new Date();
-        await fetchAppointmentsForDate(today);
+        await fetchAppointmentsForMonth(today);
     }
 
-    // Fetch appointments for a specific date
-    async function fetchAppointmentsForDate(date: Date) {
+    // Fetch appointments for the month
+    async function fetchAppointmentsForMonth(date: Date) {
         loading = true;
         try {
-            const dateStr = formatDateString(date);
+            const year = date.getFullYear();
+            const month = date.getMonth();
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            let startDate = new Date(year, month, 1);
+
+            // If current month, start from today
+            if (year === today.getFullYear() && month === today.getMonth()) {
+                startDate = today;
+            }
+
+            const endDate = new Date(year, month + 1, 0);
+
+            const startStr = formatDateString(startDate);
+            const endStr = formatDateString(endDate);
+
+            const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
             const response = await fetch(
-                `/api/v1/agendamentos/prestador/${providerId}?data=${dateStr}`,
+                `/api/v1/agendamentos/prestador/${providerId}/periodo?data_inicio=${startStr}&data_fim=${endStr}&limit=${diffDays}`,
             );
 
             if (response.ok) {
@@ -218,22 +267,27 @@
                         status = statusMap[status] || "pendente";
                     }
 
+                    // Extract price from servico if not at root
+                    let preco = item.preco;
+                    if (
+                        (preco === undefined || preco === null) &&
+                        item.servico &&
+                        item.servico.preco
+                    ) {
+                        preco = item.servico.preco;
+                    }
+
                     return {
                         ...item,
                         data,
                         hora_inicio,
                         hora_fim,
                         status,
+                        preco,
                     };
                 });
 
-                // Filter for selected date's appointments
-                todayAppointments = appointments.filter(
-                    (apt) => apt.data === dateStr,
-                );
-
-                // Calculate stats (only for today)
-                calculateStats();
+                updateTodayAppointments();
             } else {
                 console.error("Failed to fetch appointments");
                 appointments = [];
@@ -246,6 +300,13 @@
         } finally {
             loading = false;
         }
+    }
+
+    function updateTodayAppointments() {
+        if (!selectedDate) return;
+        const dateStr = formatDateString(selectedDate);
+        todayAppointments = appointments.filter((apt) => apt.data === dateStr);
+        calculateStats();
     }
 
     // Calculate statistics
@@ -328,7 +389,7 @@
             );
 
             if (response.ok) {
-                await fetchTodayAppointments(); // Refresh data
+                await fetchCurrentMonthAppointments(); // Refresh data
             } else {
                 console.error("Failed to confirm appointment");
             }
@@ -348,7 +409,7 @@
             );
 
             if (response.ok) {
-                await fetchTodayAppointments(); // Refresh data
+                await fetchCurrentMonthAppointments(); // Refresh data
             } else {
                 console.error("Failed to cancel appointment");
             }
@@ -358,7 +419,7 @@
     }
 
     onMount(() => {
-        fetchTodayAppointments();
+        fetchCurrentMonthAppointments();
     });
 </script>
 
@@ -521,7 +582,11 @@
                                 <div class="flex space-x-1">
                                     <button
                                         on:click={() => changeMonth(-1)}
-                                        class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors"
+                                        class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                                        disabled={currentYear ===
+                                            new Date().getFullYear() &&
+                                            currentMonth ===
+                                                new Date().getMonth()}
                                     >
                                         <span
                                             class="material-symbols-outlined text-[20px]"
@@ -564,17 +629,28 @@
                                             currentYear,
                                         )}
                                         {@const isToday = isTodayDay(day)}
+                                        {@const isPast = isPastDate(
+                                            day,
+                                            currentMonth,
+                                            currentYear,
+                                        )}
                                         <button
                                             on:click={() => selectDate(day)}
+                                            disabled={isPast}
                                             class="aspect-square flex flex-col items-center justify-center rounded-full text-sm font-medium transition-all relative
-                                            {isSelected
+                                            {isPast
+                                                ? 'opacity-30 cursor-not-allowed hover:bg-transparent text-gray-400'
+                                                : ''}
+                                            {!isPast && isSelected
                                                 ? 'bg-primary text-white shadow-md'
-                                                : isToday
+                                                : !isPast && isToday
                                                   ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}"
+                                                  : !isPast
+                                                    ? 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                                                    : ''}"
                                         >
                                             {day}
-                                            {#if isToday && !isSelected}
+                                            {#if isToday && !isSelected && !isPast}
                                                 <div
                                                     class="absolute bottom-1 w-1 h-1 bg-current rounded-full opacity-50"
                                                 ></div>
@@ -802,7 +878,10 @@
                                                         >attach_money</span
                                                     >
                                                     <span
-                                                        >R$ {(apt.preco || 0)
+                                                        >R$ {(
+                                                            (apt.preco || 0) /
+                                                            100
+                                                        )
                                                             .toFixed(2)
                                                             .replace(
                                                                 ".",
